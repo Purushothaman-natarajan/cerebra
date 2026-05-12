@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import agents, runs, workflows, ws
+from app.api import agents, channels, runs, workflows, ws
 from app.db import Base, engine
 
 
@@ -27,6 +27,7 @@ app.add_middleware(
 app.include_router(agents.router)
 app.include_router(workflows.router)
 app.include_router(runs.router)
+app.include_router(channels.router)
 app.include_router(ws.router)
 
 

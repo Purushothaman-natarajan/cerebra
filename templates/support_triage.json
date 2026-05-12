@@ -1,0 +1,67 @@
+{
+  "name": "Support Triage",
+  "nodes": [
+    {
+      "id": "triage",
+      "type": "agent",
+      "config": {
+        "system_prompt": "You are a support triage agent. Classify the user's message into one of: billing, technical, general. Reply with just the category name.",
+        "model": "gemini-2.0-flash",
+        "tools": [],
+        "max_iterations": 2,
+        "guardrails": { "blocked_topics": ["offensive"], "max_tokens": 256 }
+      }
+    },
+    {
+      "id": "router",
+      "type": "router",
+      "config": {
+        "conditions": {
+          "billing": ["billing"],
+          "technical": ["technical"],
+          "general": ["general"]
+        }
+      }
+    },
+    {
+      "id": "billing_agent",
+      "type": "agent",
+      "config": {
+        "system_prompt": "You are a billing support agent. Help with invoices, payments, refunds, and subscription questions. Be helpful and concise.",
+        "model": "gemini-2.0-flash",
+        "tools": [],
+        "max_iterations": 3,
+        "guardrails": { "blocked_topics": [], "max_tokens": 2048 }
+      }
+    },
+    {
+      "id": "tech_agent",
+      "type": "agent",
+      "config": {
+        "system_prompt": "You are a technical support agent. Help with bugs, errors, crashes, and technical issues. Ask clarifying questions and provide step-by-step solutions.",
+        "model": "gemini-2.0-flash",
+        "tools": ["web_search"],
+        "max_iterations": 5,
+        "guardrails": { "blocked_topics": [], "max_tokens": 4096 }
+      }
+    },
+    {
+      "id": "general_agent",
+      "type": "agent",
+      "config": {
+        "system_prompt": "You are a general support agent. Handle general inquiries, account questions, and feature requests. Be friendly and helpful.",
+        "model": "gemini-2.0-flash",
+        "tools": [],
+        "max_iterations": 3,
+        "guardrails": { "blocked_topics": [], "max_tokens": 2048 }
+      }
+    }
+  ],
+  "edges": [
+    { "source": "triage", "target": "router", "condition": null },
+    { "source": "router", "target": "billing_agent", "condition": "billing", "fallback": "general_agent" },
+    { "source": "router", "target": "tech_agent", "condition": "technical", "fallback": "general_agent" },
+    { "source": "router", "target": "general_agent", "condition": "general" }
+  ],
+  "trigger": { "type": "channel", "config": { "channel_type": "telegram" } }
+}

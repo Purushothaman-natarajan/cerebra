@@ -1,0 +1,43 @@
+{
+  "name": "Research & Report",
+  "nodes": [
+    {
+      "id": "researcher",
+      "type": "agent",
+      "config": {
+        "system_prompt": "You are a research assistant. Search the web for information on the user's query and summarize findings.",
+        "model": "gemini-2.0-flash",
+        "tools": ["web_search", "calculator"],
+        "max_iterations": 5,
+        "guardrails": { "blocked_topics": [], "max_tokens": 4096 }
+      }
+    },
+    {
+      "id": "writer",
+      "type": "agent",
+      "config": {
+        "system_prompt": "You are a technical writer. Take the research notes and write a well-structured markdown report with sections, bullet points, and a summary.",
+        "model": "gemini-2.0-flash",
+        "tools": [],
+        "max_iterations": 3,
+        "guardrails": { "blocked_topics": [], "max_tokens": 8192 }
+      }
+    },
+    {
+      "id": "reviewer",
+      "type": "agent",
+      "config": {
+        "system_prompt": "You are a fact-checker and reviewer. Review the report for accuracy, clarity, and completeness. Score confidence (0-100) and suggest improvements.",
+        "model": "gemini-2.0-flash",
+        "tools": ["web_search"],
+        "max_iterations": 3,
+        "guardrails": { "blocked_topics": [], "max_tokens": 4096 }
+      }
+    }
+  ],
+  "edges": [
+    { "source": "researcher", "target": "writer", "condition": null },
+    { "source": "writer", "target": "reviewer", "condition": null }
+  ],
+  "trigger": { "type": "manual", "config": {} }
+}

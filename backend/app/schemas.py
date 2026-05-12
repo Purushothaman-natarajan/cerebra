@@ -119,6 +119,26 @@ class RunResponse(BaseModel):
         )
 
 
+class ChannelMessageResponse(BaseModel):
+    id: int
+    channel_id: str
+    direction: str
+    text: str
+    msg_metadata: dict
+    created_at: str
+
+    @classmethod
+    def from_orm(cls, msg) -> "ChannelMessageResponse":
+        return cls(
+            id=msg.id,
+            channel_id=str(msg.channel_id) if msg.channel_id else "",
+            direction=msg.direction,
+            text=msg.text,
+            msg_metadata=msg.msg_metadata,
+            created_at=msg.created_at.isoformat(),
+        )
+
+
 class RunEventResponse(BaseModel):
     id: int
     run_id: str
