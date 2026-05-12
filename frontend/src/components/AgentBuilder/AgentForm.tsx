@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
 import type { AgentFormData } from "../../api/agents"
+import { useAvailableModels } from "../../api/providers"
+import { Button, Input, Textarea, Select } from "../ui"
 
-const MODELS = ["gemini-2.0-flash", "gemini-2.0-pro", "gemini-1.5-pro", "gemini-1.5-flash"]
 const AVAILABLE_TOOLS = ["web_search", "calculator", "http_request", "web_crawler"]
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function AgentForm({ initial, onSave, onCancel }: Props) {
+  const { data: availableModels } = useAvailableModels()
   const [form, setForm] = useState<AgentFormData>({
     name: "",
     role: "",
@@ -27,12 +29,23 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
   }, [initial])
 
   const update = (key: keyof AgentFormData, value: unknown) => setForm((f) => ({ ...f, [key]: value }))
-
   const toggleTool = (tool: string) => {
     setForm((f) => ({
       ...f,
       tools: f.tools.includes(tool) ? f.tools.filter((t) => t !== tool) : [...f.tools, tool],
     }))
+  }
+
+  const modelOptions = [
+    ...(availableModels?.map((m) => ({
+      value: m.model,
+      label: `${m.model}`,
+      group: m.provider_name,
+    })) ?? []),
+  ]
+
+  if (modelOptions.length === 0) {
+    modelOptions.push({ value: "gemini-2.0-flash", label: "gemini-2.0-flash", group: "Default" })
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -41,69 +54,36 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 p-6 border rounded-lg bg-white dark:bg-slate-900">
-      <h2 className="text-lg font-semibold">{initial ? "Edit Agent" : "New Agent"}</h2>
+    <form onSubmit={handleSubmit} className="space-y-4 p-6 rounded-xl border border-border bg-card">
+      <h2 className="text-lg font-semibold text-foreground">{initial ? "Edit Agent" : "New Agent"}</h2>
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Name</label>
-          <input
-            className="w-full border rounded px-3 py-2 text-sm"
-            value={form.name}
-            onChange={(e) => update("name", e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Role</label>
-          <input
-            className="w-full border rounded px-3 py-2 text-sm"
-            value={form.role}
-            onChange={(e) => update("role", e.target.value)}
-            required
-          />
-        </div>
+        <Input label="Name" value={form.name} onChange={(e) => update("name", e.target.value)} required />
+        <Input label="Role" value={form.role} onChange={(e) => update("role", e.target.value)} required />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1">System Prompt</label>
-        <textarea
-          className="w-full border rounded px-3 py-2 text-sm h-24"
-          value={form.system_prompt}
-          onChange={(e) => update("system_prompt", e.target.value)}
-          required
+      <Textarea label="System Prompt" value={form.system_prompt} onChange={(e) => update("system_prompt", e.target.value)} rows={5} required />
+
+      <div className="grid grid-cols-2 gap-4">
+        <Select
+          label="Model"
+          value={form.model}
+          onChange={(e) => update("model", e.target.value)}
+          options={modelOptions}
         />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Model</label>
-          <select className="w-full border rounded px-3 py-2 text-sm" value={form.model} onChange={(e) => update("model", e.target.value)}>
-            {MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Max Iterations</label>
-          <input
-            type="number"
-            className="w-full border rounded px-3 py-2 text-sm"
-            value={form.max_iterations}
-            onChange={(e) => update("max_iterations", Number(e.target.value))}
-            min={1}
-          />
-        </div>
+        <Input label="Max Iterations" type="number" value={form.max_iterations} onChange={(e) => update("max_iterations", Number(e.target.value))} min={1} />
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Tools</label>
+        <label className="block text-sm font-medium text-foreground mb-2">Tools</label>
         <div className="flex flex-wrap gap-2">
           {AVAILABLE_TOOLS.map((tool) => (
             <button
               key={tool}
               type="button"
               onClick={() => toggleTool(tool)}
-              className={`px-3 py-1 text-xs rounded-full border ${
-                form.tools.includes(tool) ? "bg-blue-600 text-white" : "bg-transparent"
+              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                form.tools.includes(tool) ? "bg-accent text-white border-accent" : "border-border text-muted hover:text-foreground hover:bg-accent-soft"
               }`}
             >
               {tool}
@@ -112,21 +92,19 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
         <input
           type="checkbox"
-          id="memory"
           checked={form.memory_enabled}
           onChange={(e) => update("memory_enabled", e.target.checked)}
+          className="rounded border-border accent-accent"
         />
-        <label htmlFor="memory" className="text-sm">Enable Memory</label>
-      </div>
+        Enable Memory
+      </label>
 
-      <div className="flex gap-2 justify-end">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm border rounded">Cancel</button>
-        <button type="submit" className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
-          {initial ? "Update" : "Create"}
-        </button>
+      <div className="flex gap-2 justify-end pt-2">
+        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+        <Button type="submit">{initial ? "Update" : "Create"}</Button>
       </div>
     </form>
   )

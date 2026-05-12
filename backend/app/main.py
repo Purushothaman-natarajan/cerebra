@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import agents, channels, runs, templates, workflows, ws
+from app.api import agents, channels, providers, runs, templates, workflows, ws
 from app.config import settings
 from app.db import Base, engine
 
@@ -30,6 +30,7 @@ app.include_router(workflows.router)
 app.include_router(runs.router)
 app.include_router(channels.router)
 app.include_router(templates.router)
+app.include_router(providers.router)
 app.include_router(ws.router)
 
 
