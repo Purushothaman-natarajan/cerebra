@@ -1,8 +1,11 @@
+import { useEffect } from "react"
 import { useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent } from "../api/agents"
 import type { AgentFormData } from "../api/agents"
 import { useAgentStore } from "../store/agentStore"
 import AgentCard from "../components/AgentBuilder/AgentCard"
 import AgentForm from "../components/AgentBuilder/AgentForm"
+import { Button, Empty, SkeletonCard } from "../components/ui"
+import { Bot } from "lucide-react"
 
 export default function AgentsPage() {
   const { data: agents, isLoading } = useAgents()
@@ -10,6 +13,14 @@ export default function AgentsPage() {
   const updateAgent = useUpdateAgent()
   const deleteAgent = useDeleteAgent()
   const { isFormOpen, editingAgent, openForm, closeForm } = useAgentStore()
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "n" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); openForm() }
+    }
+    document.addEventListener("keydown", handler)
+    return () => document.removeEventListener("keydown", handler)
+  }, [openForm])
 
   const handleSave = (data: AgentFormData) => {
     if (editingAgent) {
@@ -27,26 +38,30 @@ export default function AgentsPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Agents</h1>
-        <button
-          onClick={() => openForm()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-        >
-          + New Agent
-        </button>
+        <h1 className="text-2xl font-bold text-foreground">Agents</h1>
+        <Button onClick={() => openForm()}>+ New Agent</Button>
       </div>
 
       {isFormOpen && (
         <div className="mb-6">
-          <AgentForm
-            initial={editingAgent?.data}
-            onSave={handleSave}
-            onCancel={closeForm}
-          />
+          <AgentForm initial={editingAgent?.data} onSave={handleSave} onCancel={closeForm} />
         </div>
       )}
 
-      {isLoading && <p className="text-gray-500">Loading...</p>}
+      {isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      )}
+
+      {!isLoading && agents?.length === 0 && (
+        <Empty
+          icon={<Bot className="w-12 h-12" />}
+          title="No agents yet"
+          description="Create your first agent to get started. Agents are LLM-powered workers with tools and guardrails."
+          action={{ label: "Create Agent", onClick: () => openForm() }}
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {agents?.map((agent) => (

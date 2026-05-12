@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useToast } from "../components/ui/Toast"
 
 const BASE = "/api"
 
@@ -50,34 +51,30 @@ async function deleteTool(id: string): Promise<void> {
   if (!res.ok) throw new Error("Failed to delete tool")
 }
 
-async function fetchAgentTools(): Promise<Tool[]> {
-  const res = await fetch(`${BASE}/tools`)
-  if (!res.ok) throw new Error("Failed to fetch tools")
-  return res.json()
-}
-
 export function useTools() {
   return useQuery({ queryKey: ["tools"], queryFn: fetchTools })
 }
 
 export function useAgentTools() {
-  return useQuery({ queryKey: ["tools"], queryFn: fetchAgentTools })
+  return useQuery({ queryKey: ["tools"], queryFn: fetchTools })
 }
 
 export function useCreateTool() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   return useMutation({
     mutationFn: createTool,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tools"] }),
-    onError: (e: Error) => alert(e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["tools"] }); toast("success", "Tool created") },
+    onError: (e: Error) => toast("error", e.message),
   })
 }
 
 export function useDeleteTool() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   return useMutation({
     mutationFn: deleteTool,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tools"] }),
-    onError: (e: Error) => alert(e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["tools"] }); toast("success", "Tool deleted") },
+    onError: (e: Error) => toast("error", e.message),
   })
 }

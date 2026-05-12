@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useToast } from "../components/ui/Toast"
 
 const BASE = "/api"
 
@@ -79,27 +80,30 @@ export function useWorkflow(id: string) {
 
 export function useCreateWorkflow() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   return useMutation({
     mutationFn: createWorkflow,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["workflows"] }),
-    onError: (e: Error) => alert(e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["workflows"] }); toast("success", "Workflow created") },
+    onError: (e: Error) => toast("error", e.message),
   })
 }
 
 export function useUpdateWorkflow() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<WorkflowFormData> }) => updateWorkflow(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["workflows"] }),
-    onError: (e: Error) => alert(e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["workflows"] }); toast("success", "Workflow saved") },
+    onError: (e: Error) => toast("error", e.message),
   })
 }
 
 export function useDeleteWorkflow() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   return useMutation({
     mutationFn: deleteWorkflow,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["workflows"] }),
-    onError: (e: Error) => alert(e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["workflows"] }); toast("success", "Workflow deleted") },
+    onError: (e: Error) => toast("error", e.message),
   })
 }

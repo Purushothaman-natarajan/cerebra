@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useToast } from "../components/ui/Toast"
 
 const BASE = "/api"
 
@@ -75,27 +76,30 @@ export function useAgent(id: string) {
 
 export function useCreateAgent() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   return useMutation({
     mutationFn: createAgent,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["agents"] }),
-    onError: (e: Error) => alert(e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["agents"] }); toast("success", "Agent created") },
+    onError: (e: Error) => toast("error", e.message),
   })
 }
 
 export function useUpdateAgent() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<AgentFormData> }) => updateAgent(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["agents"] }),
-    onError: (e: Error) => alert(e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["agents"] }); toast("success", "Agent updated") },
+    onError: (e: Error) => toast("error", e.message),
   })
 }
 
 export function useDeleteAgent() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   return useMutation({
     mutationFn: deleteAgent,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["agents"] }),
-    onError: (e: Error) => alert(e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["agents"] }); toast("success", "Agent deleted") },
+    onError: (e: Error) => toast("error", e.message),
   })
 }

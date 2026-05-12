@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useToast } from "../components/ui/Toast"
 
 const BASE = "/api"
 
@@ -73,19 +74,21 @@ export function useProviders() {
 
 export function useCreateProvider() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   return useMutation({
     mutationFn: createProvider,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["providers"] }); qc.invalidateQueries({ queryKey: ["models"] }) },
-    onError: (e: Error) => alert(e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["providers"] }); qc.invalidateQueries({ queryKey: ["models"] }); toast("success", "Provider added") },
+    onError: (e: Error) => toast("error", e.message),
   })
 }
 
 export function useDeleteProvider() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   return useMutation({
     mutationFn: deleteProvider,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["providers"] }); qc.invalidateQueries({ queryKey: ["models"] }) },
-    onError: (e: Error) => alert(e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["providers"] }); qc.invalidateQueries({ queryKey: ["models"] }); toast("success", "Provider removed") },
+    onError: (e: Error) => toast("error", e.message),
   })
 }
 

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useToast } from "../components/ui/Toast"
 
 const BASE = "/api"
 
@@ -61,9 +62,10 @@ export function useRunEvents(id: string) {
 
 export function useTriggerRun() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   return useMutation({
     mutationFn: ({ workflow_id, input }: { workflow_id: string; input: string }) => triggerRun(workflow_id, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["runs"] }),
-    onError: (e: Error) => alert(e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["runs"] }); toast("success", "Run triggered") },
+    onError: (e: Error) => toast("error", e.message),
   })
 }
