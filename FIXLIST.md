@@ -1,6 +1,12 @@
 # Fix Checklist
 
-## Previous rounds (batch 1) — 17 fixed ✓
+## Previous rounds (batches 1-2) — 21 fixed ✓
+
+- [x] **B1**: Async LLM call (blocked event loop)
+- [x] **B2**: Router condition routing (broken conditional edges)
+- [x] **B3**: `nulls_first()` typo
+- [x] **B4**: ChannelsPage save button (no-op)
+- [x] **RUN**: Add `run.ps1` / `run.sh` one-click scripts + `pyproject.toml` for uv
 
 - [x] **C1**: Replace `eval()` in calculator with AST-based safe evaluator
 - [x] **C2**: Wrap `run_workflow()` in try/except — set status to "failed" on error

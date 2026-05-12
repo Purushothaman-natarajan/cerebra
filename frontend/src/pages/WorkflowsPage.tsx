@@ -1,10 +1,13 @@
 import { useState, useCallback } from "react"
 import type { Node, Edge } from "reactflow"
 import { useWorkflows, useCreateWorkflow, useUpdateWorkflow, useDeleteWorkflow } from "../api/workflows"
+import { useTemplates } from "../api/templates"
+import type { Template } from "../api/templates"
 import Canvas from "../components/WorkflowCanvas/Canvas"
 
 export default function WorkflowsPage() {
   const { data: workflows, isLoading } = useWorkflows()
+  const { data: templates } = useTemplates()
   const createWorkflow = useCreateWorkflow()
   const updateWorkflow = useUpdateWorkflow()
   const deleteWorkflow = useDeleteWorkflow()
@@ -13,6 +16,7 @@ export default function WorkflowsPage() {
   const [canvasNodes, setCanvasNodes] = useState<Node[]>([])
   const [canvasEdges, setCanvasEdges] = useState<Edge[]>([])
   const [name, setName] = useState("")
+  const [showTemplates, setShowTemplates] = useState(false)
 
   const selectWorkflow = useCallback((id: string) => {
     setSelectedId(id)
@@ -61,6 +65,13 @@ export default function WorkflowsPage() {
     })
   }, [createWorkflow, selectWorkflow])
 
+  const handleImportTemplate = useCallback((tmpl: Template) => {
+    createWorkflow.mutate(
+      { name: tmpl.name, nodes: tmpl.nodes, edges: tmpl.edges, trigger: tmpl.trigger },
+      { onSuccess: (data) => { setShowTemplates(false); selectWorkflow(data.id) } }
+    )
+  }, [createWorkflow, selectWorkflow])
+
   const handleDelete = useCallback(() => {
     if (!selectedId) return
     if (confirm("Delete this workflow?")) {
@@ -76,9 +87,14 @@ export default function WorkflowsPage() {
       <div className="w-64 border-r p-4 overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-semibold text-sm">Workflows</h2>
-          <button onClick={handleNew} className="text-xs px-2 py-1 bg-blue-600 text-white rounded">
-            + New
-          </button>
+          <div className="flex gap-1">
+            <button onClick={() => setShowTemplates(true)} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 dark:hover:bg-gray-800">
+              Templates
+            </button>
+            <button onClick={handleNew} className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+              + New
+            </button>
+          </div>
         </div>
         {isLoading && <p className="text-xs text-gray-500">Loading...</p>}
         {workflows?.map((wf) => (
@@ -124,10 +140,56 @@ export default function WorkflowsPage() {
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-400">
-            Select or create a workflow
+            <div className="text-center">
+              <p className="mb-4">Select a workflow or create one</p>
+              <div className="flex gap-3 justify-center">
+                <button onClick={handleNew} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                  + Blank Workflow
+                </button>
+                <button onClick={() => setShowTemplates(true)} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-800">
+                  From Template
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
+
+      {showTemplates && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowTemplates(false)}>
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-lg w-full mx-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-4">Import Template</h3>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {templates?.length === 0 && <p className="text-sm text-gray-500">No templates found</p>}
+              {templates?.map((tmpl) => (
+                <div
+                  key={tmpl.name}
+                  onClick={() => handleImportTemplate(tmpl)}
+                  className="p-4 border rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                >
+                  <div className="flex justify-between items-start mb-1">
+                    <h4 className="font-medium text-sm">{tmpl.name}</h4>
+                    <span className="text-[10px] px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
+                      {tmpl.trigger_type}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-2">{tmpl.description}</p>
+                  <div className="flex gap-3 text-[10px] text-gray-400">
+                    <span>{tmpl.node_count} nodes</span>
+                    <span>{tmpl.edge_count} edges</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowTemplates(false)}
+              className="mt-4 w-full px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
