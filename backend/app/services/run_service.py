@@ -8,7 +8,7 @@ from app.models.run import Run, RunEvent
 
 
 async def list_runs(db: AsyncSession) -> list[Run]:
-    result = await db.execute(select(Run).order_by(Run.started_at.desc().nullsfirst()))
+    result = await db.execute(select(Run).order_by(Run.started_at.desc().nulls_first()))
     return list(result.scalars().all())
 
 

@@ -41,7 +41,7 @@ async def call_llm_with_tools(
     if tools:
         kwargs["tools"] = tools
 
-    response = client.models.generate_content(**kwargs)
+    response = await client.aio.models.generate_content(**kwargs)
 
     if response.candidates:
         parts = response.candidates[0].content.parts

@@ -20,11 +20,13 @@ def compile_workflow(
     for edge in edges:
         source = edge["source"]
         target = edge["target"]
+        condition = edge.get("condition")
+        fallback = edge.get("fallback", target)
 
-        if edge.get("condition"):
-            def make_router(source=source, target=target, fallback=edge.get("fallback", target)):
+        if condition:
+            def make_router(cond=condition, tgt=target, fb=fallback):
                 def router_decision(state: WorkflowState) -> str:
-                    return target if state.get("_next") == target else fallback
+                    return tgt if state.get("_next") == cond else fb
                 return router_decision
 
             builder.add_conditional_edges(source, make_router())
