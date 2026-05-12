@@ -1,0 +1,44 @@
+{
+  "name": "Web Research Agent",
+  "nodes": [
+    {
+      "id": "crawler",
+      "type": "agent",
+      "config": {
+        "system_prompt": "You are a web research agent. Your job is to:\n1. Parse the user's query to identify the target URL or search topic\n2. Use the web_crawler tool to fetch the page content\n3. Use web_search to find relevant pages if no URL is given\n4. Summarize findings in a structured markdown format with sections, key points, and source links\n\nAlways cite your sources with URLs.",
+        "model": "gemini-2.0-flash",
+        "tools": ["web_crawler", "web_search"],
+        "max_iterations": 8,
+        "guardrails": {
+          "blocked_topics": [],
+          "max_tokens": 8192
+        }
+      }
+    },
+    {
+      "id": "analyzer",
+      "type": "agent",
+      "config": {
+        "system_prompt": "You are a data analyst. Take the raw research data from the crawler and:\n1. Extract key facts, statistics, and insights\n2. Identify patterns and relationships\n3. Cross-reference information across sources\n4. Produce a concise analytical report with clear conclusions\n\nFormat the output as markdown with tables where appropriate.",
+        "model": "gemini-2.0-pro",
+        "tools": ["calculator"],
+        "max_iterations": 3,
+        "guardrails": {
+          "blocked_topics": [],
+          "max_tokens": 4096
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "crawler",
+      "target": "analyzer",
+      "condition": null
+    }
+  ],
+  "trigger": {
+    "type": "manual",
+    "config": {}
+  }
+}
