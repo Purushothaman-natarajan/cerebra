@@ -1,11 +1,12 @@
 import { Routes, Route, Navigate, NavLink } from "react-router-dom"
-import { Bot, GitBranch, Activity, Radio, Cpu } from "lucide-react"
+import { Bot, GitBranch, Activity, Radio, Cpu, Wrench } from "lucide-react"
 import { ThemeProvider } from "./contexts/ThemeContext"
 import AgentsPage from "./pages/AgentsPage"
 import WorkflowsPage from "./pages/WorkflowsPage"
 import RunsPage from "./pages/RunsPage"
 import ChannelsPage from "./pages/ChannelsPage"
 import ProvidersPage from "./pages/ProvidersPage"
+import ToolsPage from "./pages/ToolsPage"
 import ThemeToggle from "./components/ui/ThemeToggle"
 import AccentPicker from "./components/ui/AccentPicker"
 
@@ -14,6 +15,7 @@ const navItems = [
   { to: "/workflows", label: "Workflows", icon: GitBranch },
   { to: "/runs", label: "Runs", icon: Activity },
   { to: "/providers", label: "Providers", icon: Cpu },
+  { to: "/tools", label: "Tools", icon: Wrench },
   { to: "/channels", label: "Channels", icon: Radio },
 ]
 
@@ -63,6 +65,7 @@ function AppContent() {
           <Route path="/workflows" element={<WorkflowsPage />} />
           <Route path="/runs" element={<RunsPage />} />
           <Route path="/providers" element={<ProvidersPage />} />
+          <Route path="/tools" element={<ToolsPage />} />
           <Route path="/channels" element={<ChannelsPage />} />
         </Routes>
       </main>

@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react"
 import type { AgentFormData } from "../../api/agents"
 import { useAvailableModels } from "../../api/providers"
+import { useAgentTools } from "../../api/tools"
 import { Button, Input, Textarea, Select } from "../ui"
-
-const AVAILABLE_TOOLS = ["web_search", "calculator", "http_request", "web_crawler"]
 
 interface Props {
   initial?: AgentFormData
@@ -13,6 +12,7 @@ interface Props {
 
 export default function AgentForm({ initial, onSave, onCancel }: Props) {
   const { data: availableModels } = useAvailableModels()
+  const { data: agentTools } = useAgentTools()
   const [form, setForm] = useState<AgentFormData>({
     name: "",
     role: "",
@@ -77,19 +77,22 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
       <div>
         <label className="block text-sm font-medium text-foreground mb-2">Tools</label>
         <div className="flex flex-wrap gap-2">
-          {AVAILABLE_TOOLS.map((tool) => (
+          {agentTools?.map((tool) => (
             <button
-              key={tool}
+              key={tool.name}
               type="button"
-              onClick={() => toggleTool(tool)}
+              onClick={() => toggleTool(tool.name)}
+              title={tool.description}
               className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                form.tools.includes(tool) ? "bg-accent text-white border-accent" : "border-border text-muted hover:text-foreground hover:bg-accent-soft"
+                form.tools.includes(tool.name) ? "bg-accent text-white border-accent" : "border-border text-muted hover:text-foreground hover:bg-accent-soft"
               }`}
             >
-              {tool}
+              {tool.name}
+              {tool.is_builtin && <span className="ml-1 opacity-60">*</span>}
             </button>
           ))}
         </div>
+        <p className="text-[10px] text-muted mt-1">Built-in tools marked with *</p>
       </div>
 
       <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
