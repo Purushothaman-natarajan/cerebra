@@ -22,7 +22,7 @@ class ChannelMessage(Base):
     __tablename__ = "channel_messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    channel_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("channels.id"), nullable=False)
+    channel_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("channels.id"), nullable=True)
     direction: Mapped[str] = mapped_column(String(10), nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     msg_metadata: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)

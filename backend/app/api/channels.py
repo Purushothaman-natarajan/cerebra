@@ -1,19 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select
+
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.channels.telegram import TelegramChannel
 from app.config import settings
 from app.db import get_db
 from app.models.message import Channel, ChannelMessage
+from app.models.workflow import WorkflowDef
 from app.runtime.executor import run_workflow
-from app.schemas import ChannelMessageResponse
 
 router = APIRouter(prefix="/channels", tags=["channels"])
 
 
 @router.get("")
 async def list_channels(db: AsyncSession = Depends(get_db)):
-    from sqlalchemy import select
     result = await db.execute(select(Channel).order_by(Channel.created_at.desc()))
     channels = result.scalars().all()
     return [
@@ -57,8 +58,11 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
     if result is None:
         return {"ok": False}
 
+    channel_row = await db.execute(select(Channel).where(Channel.type == "telegram").limit(1))
+    channel = channel_row.scalar_one_or_none()
+
     msg = ChannelMessage(
-        channel_id=None,
+        channel_id=channel.id if channel else None,
         direction="incoming",
         text=result["text"],
         msg_metadata=result,
@@ -66,18 +70,10 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
     db.add(msg)
     await db.flush()
 
-    from sqlalchemy import select
-    wf_result = await db.execute(
-        select(Channel).where(Channel.type == "telegram").limit(1)
-    )
-    channel_row = wf_result.scalar_one_or_none()
-    workflow_id = channel_row.config.get("workflow_id") if channel_row else None
+    workflow_id = channel.config.get("workflow_id") if channel else None
 
     if workflow_id:
-        from app.models.workflow import WorkflowDef
-        wf_def_result = await db.execute(
-            select(WorkflowDef).where(WorkflowDef.id == workflow_id)
-        )
+        wf_def_result = await db.execute(select(WorkflowDef).where(WorkflowDef.id == workflow_id))
         wf_def = wf_def_result.scalar_one_or_none()
         if wf_def:
             wf = {"nodes": wf_def.nodes, "edges": wf_def.edges, "entry_node": wf_def.nodes[0]["id"] if wf_def.nodes else ""}

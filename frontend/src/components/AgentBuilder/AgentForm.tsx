@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import type { AgentFormData } from "../../api/agents"
 
 const MODELS = ["gemini-2.0-flash", "gemini-2.0-pro", "gemini-1.5-pro", "gemini-1.5-flash"]
-const AVAILABLE_TOOLS = ["web_search", "calculator", "http_request"]
+const AVAILABLE_TOOLS = ["web_search", "calculator", "http_request", "web_crawler"]
 
 interface Props {
   initial?: AgentFormData

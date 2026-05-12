@@ -34,5 +34,7 @@ async def agent_node(state: dict) -> dict:
                     break
             messages.append({"role": "assistant", "content": result})
             break
+    else:
+        messages.append({"role": "assistant", "content": "I apologize, but I was unable to complete the request within the allowed number of steps. Please try a simpler query or increase the max_iterations setting."})
 
     return {"messages": messages}

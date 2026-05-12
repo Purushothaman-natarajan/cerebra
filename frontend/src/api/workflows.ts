@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
-const BASE = ""
+const BASE = "/api"
 
 export interface WorkflowNode {
   id: string
@@ -82,6 +82,7 @@ export function useCreateWorkflow() {
   return useMutation({
     mutationFn: createWorkflow,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workflows"] }),
+    onError: (e: Error) => alert(e.message),
   })
 }
 
@@ -90,6 +91,7 @@ export function useUpdateWorkflow() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<WorkflowFormData> }) => updateWorkflow(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workflows"] }),
+    onError: (e: Error) => alert(e.message),
   })
 }
 
@@ -98,5 +100,6 @@ export function useDeleteWorkflow() {
   return useMutation({
     mutationFn: deleteWorkflow,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workflows"] }),
+    onError: (e: Error) => alert(e.message),
   })
 }

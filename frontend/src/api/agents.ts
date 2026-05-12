@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
-const BASE = ""
+const BASE = "/api"
 
 export interface Agent {
   id: string
@@ -78,6 +78,7 @@ export function useCreateAgent() {
   return useMutation({
     mutationFn: createAgent,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["agents"] }),
+    onError: (e: Error) => alert(e.message),
   })
 }
 
@@ -86,6 +87,7 @@ export function useUpdateAgent() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<AgentFormData> }) => updateAgent(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["agents"] }),
+    onError: (e: Error) => alert(e.message),
   })
 }
 
@@ -94,5 +96,6 @@ export function useDeleteAgent() {
   return useMutation({
     mutationFn: deleteAgent,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["agents"] }),
+    onError: (e: Error) => alert(e.message),
   })
 }

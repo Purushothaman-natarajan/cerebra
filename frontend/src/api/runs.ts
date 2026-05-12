@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
-const BASE = ""
+const BASE = "/api"
 
 export interface Run {
   id: string
@@ -64,5 +64,6 @@ export function useTriggerRun() {
   return useMutation({
     mutationFn: ({ workflow_id, input }: { workflow_id: string; input: string }) => triggerRun(workflow_id, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["runs"] }),
+    onError: (e: Error) => alert(e.message),
   })
 }

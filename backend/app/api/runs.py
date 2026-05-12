@@ -39,8 +39,12 @@ async def trigger_run(body: RunCreate, db: AsyncSession = Depends(get_db)):
     await run_service.update_run_status(db, str(run.id), "running")
 
     wf_def = {"nodes": wf.nodes, "edges": wf.edges, "entry_node": wf.nodes[0]["id"] if wf.nodes else ""}
-    await run_workflow(wf_def, body.input, str(run.id), db)
+    try:
+        await run_workflow(wf_def, body.input, str(run.id), db)
+        await run_service.update_run_status(db, str(run.id), "completed")
+    except Exception:
+        await run_service.update_run_status(db, str(run.id), "failed")
+        raise
 
-    await run_service.update_run_status(db, str(run.id), "completed")
     run = await run_service.get_run(db, str(run.id))
     return RunResponse.from_orm(run)

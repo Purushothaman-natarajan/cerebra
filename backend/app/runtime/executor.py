@@ -43,11 +43,21 @@ async def run_workflow(
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "payload": {"input": input_message},
     }
-    await publish("run:events", event)
+    await publish(f"run:events:{rid}", event)
     if db:
         await run_service.add_run_event(db, rid, "run_start", "system", {"input": input_message})
 
-    result = await graph.ainvoke(initial_state)
+    try:
+        result = await graph.ainvoke(initial_state)
+    except Exception:
+        event = {
+            "run_id": rid,
+            "type": "run_error",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "payload": {"error": "Workflow execution failed"},
+        }
+        await publish(f"run:events:{rid}", event)
+        raise
 
     event = {
         "run_id": rid,
@@ -55,7 +65,7 @@ async def run_workflow(
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "payload": {"messages": result.get("messages", [])},
     }
-    await publish("run:events", event)
+    await publish(f"run:events:{rid}", event)
     if db:
         await run_service.add_run_event(db, rid, "run_end", "system", {"messages": str(result.get("messages", []))})
 
