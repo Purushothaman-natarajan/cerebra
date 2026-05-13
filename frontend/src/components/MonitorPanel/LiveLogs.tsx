@@ -1,15 +1,10 @@
 import { useEffect, useRef, useState } from "react"
 
 interface LogEntry {
-  timestamp: string
-  type: string
-  agent_id: string
-  payload: Record<string, unknown>
+  timestamp: string; type: string; agent_id: string; payload: Record<string, unknown>
 }
 
-interface Props {
-  runId: string
-}
+interface Props { runId: string }
 
 export default function LiveLogs({ runId }: Props) {
   const [logs, setLogs] = useState<LogEntry[]>([])
@@ -19,7 +14,9 @@ export default function LiveLogs({ runId }: Props) {
   useEffect(() => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
     const host = window.location.host
-    const ws = new WebSocket(`${protocol}//${host}/ws/runs/${runId}`)
+    const token = localStorage.getItem("cerebra-auth-key") || ""
+    const wsUrl = `${protocol}//${host}/ws/runs/${runId}${token ? `?token=${encodeURIComponent(token)}` : ""}`
+    const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => setConnected(true)
     ws.onclose = () => setConnected(false)
@@ -28,17 +25,13 @@ export default function LiveLogs({ runId }: Props) {
       try {
         const data = JSON.parse(event.data)
         setLogs((prev) => [...prev, data])
-      } catch {
-        // ignore
-      }
+      } catch { /* ignore */ }
     }
 
     return () => ws.close()
   }, [runId])
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [logs])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }) }, [logs])
 
   return (
     <div className="border rounded-lg bg-black text-green-400 font-mono text-xs p-4 h-64 overflow-y-auto">

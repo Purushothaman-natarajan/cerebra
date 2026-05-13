@@ -14,5 +14,5 @@ async def web_search(query: str) -> str:
                 timeout=10,
             )
             return resp.text[:2000]
-    except Exception as e:
-        return f"Search failed: {e}"
+    except Exception:
+        return "Search failed"

@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_webhook_url: str = ""
     cors_origins: str = "http://localhost:5173,http://localhost:8000"
+    cerebra_api_key: str = ""
+    encryption_key: str = ""
     db_pool_size: int = 5
     db_max_overflow: int = 10
 

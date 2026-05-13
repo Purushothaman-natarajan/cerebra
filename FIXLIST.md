@@ -39,7 +39,40 @@
 - [x] **B3**: `run_service.py:11` — `nullsfirst()` typo → `nulls_first()`.
 - [x] **B4**: `ChannelsPage.tsx:28` — Save button now has `onClick` handler with state management and API call to `POST /channels`.
 
-## P0 — Must-fix (crashes / silent failures)
+## Security Audit — New Issues
+
+### P0 — Critical ✓
+
+- [x] **S1**: Encrypt provider API keys at rest — Fernet encryption via `cryptography`, masked in API responses
+- [x] **S2**: Add API key authentication guard — `Authorization: Bearer` middleware on all routes + WebSocket token param
+
+### P1 — High
+
+- [x] **S3**: Fix SSRF DNS bypass — async DNS resolution before checking private IPs
+- [ ] **S4**: Add rate limiting (stricter on `/runs`)
+- [x] **S5**: Add security headers to nginx (X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
+
+### P2 — Medium ✓
+
+- [x] **S6**: Sanitize `web_search` error messages — generic "Search failed"
+- [x] **S7**: Sanitize `web_crawler` error messages — generic error message
+- [ ] **S8**: Add HTTPS support to nginx (SSL config block)
+- [ ] **S9**: Add Redis password to docker-compose + config
+- [x] **S10**: Sanitize calculator error messages — generic "Error: Invalid expression"
+
+### P3 — Low ✓
+
+- [ ] **S11**: Add WebSocket origin validation
+- [x] **S12**: Update `.gitignore` (logs, DS_Store, secrets, keys, pem, env.local)
+- [ ] **S14**: Add input length limits on API endpoints
+
+### Previously existing (also addressed)
+- [x] **H6**: SSRF DNS bypass (covered by S3)
+- [x] **Q3**: web_search fragile endpoint — error sanitized
+
+## Previously existing
+
+### P0 — Must-fix (crashes / silent failures)
 
 - [ ] **C6**: Add basic auth or API key guard
 

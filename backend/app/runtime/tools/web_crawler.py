@@ -8,7 +8,7 @@ from app.runtime.tools.registry import register
 
 @register("web_crawler")
 async def web_crawler(url: str, max_chars: int = 5000) -> str:
-    """Crawl a web page and extract clean text/markdown content. Input: URL to crawl, optionally max_chars (default 5000). Output: extracted page content."""
+    """Crawl a web page and extract clean text/markdown content. Input: URL to crawl, optionally max_chars. Output: extracted page content."""
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
             resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0 (compatible; Cerebra/1.0)"})
@@ -25,12 +25,7 @@ async def web_crawler(url: str, max_chars: int = 5000) -> str:
         text = body.get_text(separator="\n", strip=True)
         text = re.sub(r"\n{3,}", "\n\n", text)
 
-        lines = []
-        for line in text.split("\n"):
-            line = line.strip()
-            if line:
-                lines.append(line)
-
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
         content = "\n".join(lines)
 
         if title:
@@ -41,9 +36,5 @@ async def web_crawler(url: str, max_chars: int = 5000) -> str:
 
         return content
 
-    except httpx.HTTPStatusError as e:
-        return f"HTTP error {e.response.status_code} when crawling {url}"
-    except httpx.RequestError as e:
-        return f"Request failed for {url}: {e}"
-    except Exception as e:
-        return f"Failed to crawl {url}: {e}"
+    except Exception:
+        return f"Failed to crawl {url}"

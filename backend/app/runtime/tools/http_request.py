@@ -1,4 +1,6 @@
+import asyncio
 import ipaddress
+import socket
 from urllib.parse import urlparse
 
 import httpx
@@ -16,22 +18,37 @@ _PRIVATE_BLOCKS = [
 ]
 
 
-def _is_private_url(url: str) -> bool:
+async def _is_private_url(url: str) -> bool:
     parsed = urlparse(url)
     host = parsed.hostname
     if not host:
         return True
+
+    known_private = ("localhost", "127.0.0.1", "::1", "0.0.0.0", "host.docker.internal")
+    if host in known_private:
+        return True
+
+    loop = asyncio.get_event_loop()
     try:
-        addr = ipaddress.ip_address(host)
-        return any(addr in block for block in _PRIVATE_BLOCKS)
-    except ValueError:
-        return host in ("localhost", "127.0.0.1", "::1", "0.0.0.0")
+        addrs = await loop.getaddrinfo(host, None)
+        for family, _, _, _, sockaddr in addrs:
+            if family in (socket.AF_INET, socket.AF_INET6):
+                try:
+                    addr = ipaddress.ip_address(sockaddr[0])
+                    if any(addr in block for block in _PRIVATE_BLOCKS):
+                        return True
+                except ValueError:
+                    continue
+    except OSError:
+        return True
+
+    return False
 
 
 @register("http_request")
 async def http_request(url: str, method: str = "GET", body: str = "") -> str:
-    """Make an HTTP request to external URLs only. Input: url, method (GET/POST), optional body. Output: response text (first 2000 chars)."""
-    if _is_private_url(url):
+    """Make an HTTP request to external URLs only. Input: url, method (GET/POST). Output: response text."""
+    if await _is_private_url(url):
         return "Error: Requests to private/internal addresses are not allowed"
 
     try:
@@ -41,5 +58,5 @@ async def http_request(url: str, method: str = "GET", body: str = "") -> str:
             else:
                 resp = await client.post(url, content=body, timeout=10)
             return resp.text[:2000]
-    except Exception as e:
-        return f"HTTP request failed: {e}"
+    except Exception:
+        return "Error: HTTP request failed"

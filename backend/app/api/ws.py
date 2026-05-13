@@ -1,8 +1,8 @@
-import asyncio
 import json
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from app.auth import verify_ws_key
 from app.bus import subscribe
 
 router = APIRouter()
@@ -10,6 +10,9 @@ router = APIRouter()
 
 @router.websocket("/ws/runs/{run_id}")
 async def run_logs(websocket: WebSocket, run_id: str):
+    if not await verify_ws_key(websocket):
+        return
+
     await websocket.accept()
 
     pubsub = await subscribe(f"run:events:{run_id}")

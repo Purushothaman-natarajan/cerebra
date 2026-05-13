@@ -27,18 +27,18 @@ def _eval_node(node: ast.AST) -> float | int:
     if isinstance(node, ast.Constant):
         if isinstance(node.value, (int, float)):
             return node.value
-        raise ValueError(f"Unsupported constant: {node.value}")
+        raise ValueError("Unsupported constant")
     if isinstance(node, ast.UnaryOp):
         op = _ALLOWED_OPS.get(type(node.op))
         if op is None:
-            raise ValueError(f"Unsupported operator: {type(node.op).__name__}")
+            raise ValueError("Unsupported operator")
         return op(_eval_node(node.operand))
     if isinstance(node, ast.BinOp):
         op = _ALLOWED_OPS.get(type(node.op))
         if op is None:
-            raise ValueError(f"Unsupported operator: {type(node.op).__name__}")
+            raise ValueError("Unsupported operator")
         return op(_eval_node(node.left), _eval_node(node.right))
-    raise ValueError(f"Unsupported expression: {type(node).__name__}")
+    raise ValueError("Invalid expression")
 
 
 @register("calculator")
@@ -47,5 +47,5 @@ async def calculator(expression: str) -> str:
     try:
         result = _safe_eval(expression)
         return str(result)
-    except Exception as e:
-        return f"Error: {e}"
+    except Exception:
+        return "Error: Invalid expression"

@@ -1,80 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useToast } from "../components/ui/Toast"
+import { apiFetch } from "./client"
 
-const BASE = "/api"
+export interface Tool { id?: string; name: string; description: string; tool_type: string; config?: Record<string, unknown>; is_builtin: boolean; created_at?: string }
+export interface ToolFormData { name: string; description: string; tool_type: "http" | "python" | "webhook"; config: { url?: string; method?: string; headers?: Record<string, string>; parameters?: { name: string; type: "string" | "number" | "boolean"; description: string }[]; code?: string } }
 
-export interface Tool {
-  id?: string
-  name: string
-  description: string
-  tool_type: string
-  config?: Record<string, unknown>
-  is_builtin: boolean
-  created_at?: string
-}
+const fetchTools = () => apiFetch<Tool[]>("/tools")
+const createTool = (data: ToolFormData) => apiFetch<Tool>("/tools", { method: "POST", body: JSON.stringify(data) })
+const deleteTool = (id: string) => apiFetch<void>(`/tools/${id}`, { method: "DELETE" })
 
-export interface ToolFormData {
-  name: string
-  description: string
-  tool_type: "http" | "python" | "webhook"
-  config: {
-    url?: string
-    method?: string
-    headers?: Record<string, string>
-    parameters?: {
-      name: string
-      type: "string" | "number" | "boolean"
-      description: string
-    }[]
-    code?: string
-  }
-}
-
-async function fetchTools(): Promise<Tool[]> {
-  const res = await fetch(`${BASE}/tools`)
-  if (!res.ok) throw new Error("Failed to fetch tools")
-  return res.json()
-}
-
-async function createTool(data: ToolFormData): Promise<Tool> {
-  const res = await fetch(`${BASE}/tools`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  })
-  if (!res.ok) throw new Error("Failed to create tool")
-  return res.json()
-}
-
-async function deleteTool(id: string): Promise<void> {
-  const res = await fetch(`${BASE}/tools/${id}`, { method: "DELETE" })
-  if (!res.ok) throw new Error("Failed to delete tool")
-}
-
-export function useTools() {
-  return useQuery({ queryKey: ["tools"], queryFn: fetchTools })
-}
-
-export function useAgentTools() {
-  return useQuery({ queryKey: ["tools"], queryFn: fetchTools })
-}
+export function useTools() { return useQuery({ queryKey: ["tools"], queryFn: fetchTools }) }
+export function useAgentTools() { return useQuery({ queryKey: ["tools"], queryFn: fetchTools }) }
 
 export function useCreateTool() {
-  const qc = useQueryClient()
-  const { toast } = useToast()
-  return useMutation({
-    mutationFn: createTool,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["tools"] }); toast("success", "Tool created") },
-    onError: (e: Error) => toast("error", e.message),
-  })
+  const qc = useQueryClient(); const { toast } = useToast()
+  return useMutation({ mutationFn: createTool, onSuccess: () => { qc.invalidateQueries({ queryKey: ["tools"] }); toast("success", "Tool created") }, onError: (e: Error) => toast("error", e.message) })
 }
 
 export function useDeleteTool() {
-  const qc = useQueryClient()
-  const { toast } = useToast()
-  return useMutation({
-    mutationFn: deleteTool,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["tools"] }); toast("success", "Tool deleted") },
-    onError: (e: Error) => toast("error", e.message),
-  })
+  const qc = useQueryClient(); const { toast } = useToast()
+  return useMutation({ mutationFn: deleteTool, onSuccess: () => { qc.invalidateQueries({ queryKey: ["tools"] }); toast("success", "Tool deleted") }, onError: (e: Error) => toast("error", e.message) })
 }
