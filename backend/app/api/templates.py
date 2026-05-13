@@ -1,3 +1,10 @@
+"""Template listing endpoint.
+
+Reads workflow template JSON files from the templates/ directory
+and returns them as a list. Templates provide pre-built multi-agent
+workflows that users can import.
+"""
+
 import json
 from pathlib import Path
 
@@ -10,6 +17,7 @@ TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "template
 
 @router.get("")
 async def list_templates():
+    """List all available workflow templates from the templates/ directory."""
     templates = []
     if not TEMPLATES_DIR.exists():
         return templates
@@ -34,6 +42,7 @@ async def list_templates():
 
 
 def _describe(data: dict) -> str:
+    """Generate a human-readable description from a template's node prompts."""
     nodes = data.get("nodes", [])
     parts = []
     for n in nodes:

@@ -1,3 +1,5 @@
+/** Root layout: sidebar navigation + themed content area with error boundaries on every page. */
+
 import { Component, type ReactNode } from "react"
 import { Routes, Route, NavLink } from "react-router-dom"
 import { Bot, GitBranch, Activity, Radio, Cpu, Wrench, LayoutDashboard } from "lucide-react"
@@ -13,6 +15,7 @@ import ThemeToggle from "./components/ui/ThemeToggle"
 import AccentPicker from "./components/ui/AccentPicker"
 import { Button } from "./components/ui"
 
+/** Catches rendering errors in a page and shows a retry button instead of a white screen. */
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null }
   static getDerivedStateFromError(error: Error) { return { error } }
@@ -60,14 +63,10 @@ function Sidebar() {
             end={item.to === "/"}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
-                isActive
-                  ? "font-medium"
-                  : "text-muted hover:text-foreground hover:bg-accent-soft"
+                isActive ? "font-medium" : "text-muted hover:text-foreground hover:bg-accent-soft"
               }`
             }
-            style={({ isActive }) =>
-              isActive ? { background: "var(--accent-soft)", color: "var(--accent)" } : {}
-            }
+            style={({ isActive }) => (isActive ? { background: "var(--accent-soft)", color: "var(--accent)" } : {})}
           >
             <item.icon className="w-4 h-4" />
             {item.label}

@@ -1,3 +1,5 @@
+"""Run and RunEvent ORM models — workflow execution traces."""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -9,6 +11,8 @@ from app.db import Base
 
 
 class Run(Base):
+    """A single execution of a workflow. Tracks status and timing."""
+
     __tablename__ = "runs"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -19,6 +23,8 @@ class Run(Base):
 
 
 class RunEvent(Base):
+    """An event emitted during a run (agent_start, tool_call, message, error, etc.)."""
+
     __tablename__ = "run_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

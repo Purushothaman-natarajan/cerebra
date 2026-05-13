@@ -1,3 +1,5 @@
+"""Agent CRUD business logic."""
+
 import uuid
 
 from sqlalchemy import select
@@ -46,6 +48,7 @@ async def delete_agent(db: AsyncSession, agent_id: str) -> bool:
 
 
 def _clean_data(data: dict) -> dict:
+    """Convert string UUIDs to UUID objects for ORM compatibility."""
     d = dict(data)
     if d.get("channel_id"):
         d["channel_id"] = uuid.UUID(d["channel_id"])

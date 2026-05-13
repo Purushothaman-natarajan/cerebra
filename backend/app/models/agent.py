@@ -1,3 +1,5 @@
+"""Agent ORM model — an LLM-powered worker with tools and guardrails."""
+
 import uuid
 from datetime import datetime, timezone
 

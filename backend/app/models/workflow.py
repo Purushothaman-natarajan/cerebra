@@ -1,3 +1,5 @@
+"""Workflow definition ORM model — a directed graph of agent/router nodes."""
+
 import uuid
 from datetime import datetime, timezone
 

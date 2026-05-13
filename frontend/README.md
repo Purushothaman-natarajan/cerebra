@@ -1,132 +1,101 @@
 # Cerebra — Frontend
 
-AI Agent Orchestration Platform frontend. React + TypeScript + ReactFlow.
+AI Agent Orchestration Platform frontend.
 
-## Tech Stack
+## Tech Stack & Reasoning
 
-| Layer | Choice |
-|-------|--------|
-| Framework | React 19 + TypeScript |
-| Build | Vite 6 |
-| Routing | React Router v7 |
-| State | Zustand |
-| Data Fetching | TanStack Query |
-| UI | Tailwind CSS |
-| Workflow Canvas | ReactFlow |
-| Charts | Recharts |
-| Icons | Lucide React |
+| Layer | Choice | Why |
+|-------|--------|-----|
+| **Framework** | React 19 | Latest concurrent features, server components compatible |
+| **Build** | Vite 6 | Fast HMR, native TypeScript/ESM, optimal code splitting |
+| **Routing** | React Router v7 | Client-side routing with `NavLink` for active-state sidebar |
+| **State** | Zustand | Minimal boilerplate, no providers needed, works outside React tree |
+| **Data Fetching** | TanStack Query v5 | Automatic cache invalidation, background refetch, mutation lifecycle |
+| **Canvas** | ReactFlow v11 | Drag-and-drop node graph, custom node/edge renderers, minimap |
+| **UI** | Tailwind CSS v3 + CSS vars | Utility-first, full theming via CSS custom properties |
+| **Charts** | Recharts | Lightweight composable charts for future token/cost monitoring |
+| **Icons** | Lucide | Clean SVG icons, tree-shakeable |
 
-## Quick Start
+## Theming
 
-```bash
-# 1. Install dependencies
-npm install
-
-# 2. Start dev server (proxies API to localhost:8000)
-npm run dev
-```
-
-Opens at http://localhost:5173. The Vite dev server proxies `/api/*` to `http://localhost:8000/*` and `ws://localhost:8000/ws/*` for WebSocket connections.
+- **6 accent colors**: blue, purple, emerald, amber, rose, cyan — switchable via sidebar
+- **Dark/light mode**: Manual toggle (persisted to localStorage), overrides system preference
+- **CSS variable system**: `--bg-primary`, `--fg-primary`, `--accent`, `--border`, etc.
+- **Glassmorphism**: `.glass` class with `backdrop-filter: blur()` and semi-transparent backgrounds
 
 ## Pages
 
-| Route | Page | Description |
-|-------|------|-------------|
-| `/agents` | AgentsPage | List, create, edit AI agents |
-| `/workflows` | WorkflowsPage | Visual workflow canvas with ReactFlow |
-| `/runs` | RunsPage | Run history with event traces |
-| `/channels` | ChannelsPage | Telegram and channel configuration |
-
-## Project Structure
-
-```
-frontend/
-├── src/
-│   ├── components/
-│   │   ├── AgentBuilder/
-│   │   │   ├── AgentForm.tsx      # Create/edit agent form
-│   │   │   └── AgentCard.tsx      # Agent summary card
-│   │   ├── WorkflowCanvas/
-│   │   │   ├── Canvas.tsx         # ReactFlow wrapper
-│   │   │   ├── AgentNode.tsx      # Custom agent node renderer
-│   │   │   ├── RouterNode.tsx     # Router decision node
-│   │   │   └── EdgeMenu.tsx       # Edge condition editor
-│   │   ├── MonitorPanel/
-│   │   │   ├── LiveLogs.tsx       # WebSocket log stream
-│   │   │   ├── TokenChart.tsx     # Token/cost monitoring (Recharts)
-│   │   │   └── MessageTrace.tsx   # Inter-agent message trace
-│   │   └── ChannelConfig/
-│   │       └── TelegramSetup.tsx  # Telegram bot configuration
-│   ├── pages/
-│   │   ├── AgentsPage.tsx
-│   │   ├── WorkflowsPage.tsx
-│   │   ├── RunsPage.tsx
-│   │   └── ChannelsPage.tsx
-│   ├── store/
-│   │   ├── agentStore.ts          # Zustand store for agents
-│   │   └── runStore.ts            # Zustand store for runs
-│   ├── api/
-│   │   └── ...                    # TanStack Query hooks
-│   ├── App.tsx                    # Root component with routes
-│   ├── main.tsx                   # Entry point
-│   └── index.css                  # Tailwind base styles
-├── public/
-├── index.html
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-├── tailwind.config.js
-├── postcss.config.js
-└── Dockerfile
-```
-
-## API Integration
-
-The frontend communicates with the FastAPI backend through:
-
-- **REST API** — CRUD operations for agents, workflows, runs, and channels
-- **WebSocket** — Real-time run event streaming at `ws://host:8000/ws/runs/{run_id}`
-
-Vite dev server proxies:
-- `/api/*` → `http://localhost:8000/*`
-- `/ws/*` → `ws://localhost:8000/*`
-
-## Available Scripts
-
-```bash
-npm run dev       # Start development server
-npm run build     # TypeScript check + production build
-npm run preview   # Preview production build
-```
+| Route | Component | Description |
+|-------|-----------|-------------|
+| `/` | Dashboard | Stats cards, quick actions, recent runs |
+| `/agents` | AgentsPage | CRUD list for agents. Ctrl+N to create |
+| `/workflows` | WorkflowsPage | Visual ReactFlow canvas. Import from templates |
+| `/runs` | RunsPage | Run history + WebSocket live logs + event traces |
+| `/providers` | ProvidersPage | Configure LLM providers (OpenAI, Gemini, local Ollama, etc.) |
+| `/tools` | ToolsPage | Create custom HTTP/Python/Webhook tools |
+| `/channels` | ChannelsPage | Configure Telegram bot integration |
 
 ## Component Architecture
 
-### WorkflowCanvas (ReactFlow)
+```
+src/
+├── api/              # TanStack Query hooks + fetch client with auth
+│   ├── client.ts     # apiFetch helper (auto-attaches auth header)
+│   ├── auth.ts       # API key storage in localStorage
+│   ├── agents.ts     # useAgents, useCreateAgent, etc.
+│   ├── workflows.ts  # useWorkflows, useCreateWorkflow, etc.
+│   ├── runs.ts       # useRuns, useTriggerRun, etc.
+│   ├── providers.ts  # useProviders, useAvailableModels
+│   ├── tools.ts      # useTools, useCreateTool
+│   └── templates.ts  # useTemplates
+├── components/
+│   ├── ui/           # Design system kit (13 components)
+│   │   ├── cn.ts     # clsx + tailwind-merge utility
+│   │   ├── Button.tsx, Input.tsx, Select.tsx, Textarea.tsx
+│   │   ├── Card.tsx, Badge.tsx, Dialog.tsx
+│   │   ├── Toast.tsx, Skeleton.tsx, Empty.tsx
+│   │   └── ThemeToggle.tsx, AccentPicker.tsx
+│   ├── AgentBuilder/ # AgentForm, AgentCard
+│   ├── WorkflowCanvas/ # Canvas (ReactFlow), AgentNode, RouterNode, EdgeMenu
+│   ├── MonitorPanel/ # LiveLogs (WebSocket), MessageTrace
+│   └── ToolBuilder/  # ToolForm
+├── pages/            # 7 page components
+├── contexts/         # ThemeContext (dark/light + accent)
+├── store/            # agentStore (Zustand)
+└── styles/           # theme.css (CSS variable definitions)
+```
 
-The canvas renders a directed graph where:
-- **Agent nodes** represent LLM agents with configurable tools and prompts
-- **Router nodes** represent conditional branching logic
-- **Edges** can have conditions attached for routing decisions
+## Component Kit
 
-Users drag-and-drop nodes, connect them with edges, and configure conditions inline.
+All UI components in `src/components/ui/` use the `cn()` utility (clsx + tailwind-merge):
 
-### MonitorPanel
+- **Button**: 5 variants (primary/secondary/ghost/danger/outline), 3 sizes, loading state
+- **Input**: Label, error state, helper text, focus ring
+- **Select**: Label, error, option groups (optgroup)
+- **Textarea**: Auto-resize, label, error state
+- **Card**: Glass variant, hover lift effect, border-theme aware
+- **Badge**: 5 color variants (default/success/warning/danger/info)
+- **Dialog**: Modal with backdrop blur, escape to close, click outside to close
+- **Toast**: Stackable notifications, auto-dismiss (4s), 4 types (success/error/info/warning)
+- **Skeleton**: Pulse animation, SkeletonCard + SkeletonRow variants
+- **Empty**: Icon + title + description + CTA button
 
-Connects to the WebSocket endpoint for a given run ID and renders:
-- **LiveLogs** — Real-time scrolling log of agent actions, tool calls, and LLM responses
-- **TokenChart** — Recharts line chart tracking token usage over time
-- **MessageTrace** — Tree view showing the path of messages between agents
+## Security
 
-## Building for Production
+- **Auth headers**: All API calls via `apiFetch()` auto-attach `Authorization: Bearer` from `localStorage`
+- **WebSocket auth**: WebSocket URL includes `?token=` query param when API key is set
+- **Toast errors**: All mutation errors surface as toast notifications (no raw `alert()`)
+- **Error boundaries**: Every page is wrapped in an error boundary with Retry button
+
+## Build
 
 ```bash
-npm run build
+npm run dev      # Dev server with HMR
+npm run build    # Production build (TypeScript check + Vite)
+npm run preview  # Preview production build
 ```
 
-Output goes to `dist/`. The Dockerfile serves it via nginx:
+## Component Usage Note
 
-```dockerfile
-FROM nginx:alpine
-COPY dist /usr/share/nginx/html
-EXPOSE 80
-```
+- `TokenChart.tsx` was removed — token/cost tracking not yet implemented on backend
+- `useRunStore` was removed — run selection uses local `useState` in RunsPage

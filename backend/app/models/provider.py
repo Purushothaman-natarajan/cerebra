@@ -1,3 +1,5 @@
+"""LLM provider ORM model — external AI API connections."""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -9,6 +11,12 @@ from app.db import Base
 
 
 class LLMProvider(Base):
+    """An external LLM provider configuration (OpenAI, Gemini, Anthropic, Ollama, etc.).
+
+    API keys are encrypted at rest using Fernet (see app.security).
+    The models list is cached from the provider's API.
+    """
+
     __tablename__ = "llm_providers"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)

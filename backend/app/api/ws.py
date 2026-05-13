@@ -1,3 +1,9 @@
+"""WebSocket endpoint for live run event streaming.
+
+Clients connect to /ws/runs/{run_id} to receive real-time events
+as the workflow executes. Events are published to Redis by the executor.
+"""
+
 import json
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -10,6 +16,7 @@ router = APIRouter()
 
 @router.websocket("/ws/runs/{run_id}")
 async def run_logs(websocket: WebSocket, run_id: str):
+    """Stream run events to the connected WebSocket client in real-time."""
     if not await verify_ws_key(websocket):
         return
 
@@ -25,8 +32,7 @@ async def run_logs(websocket: WebSocket, run_id: str):
         async for message in pubsub.listen():
             if message["type"] != "message":
                 continue
-            data = json.loads(message["data"])
-            await websocket.send_json(data)
+            await websocket.send_json(json.loads(message["data"]))
     except WebSocketDisconnect:
         pass
     finally:

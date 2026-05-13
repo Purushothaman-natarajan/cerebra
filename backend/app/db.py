@@ -1,3 +1,9 @@
+"""Async database engine and session factory for PostgreSQL.
+
+Uses SQLAlchemy 2.0 async API with asyncpg driver.
+Engine pool size is configurable via settings.
+"""
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -13,10 +19,16 @@ async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_o
 
 
 class Base(DeclarativeBase):
+    """Base class for all SQLAlchemy ORM models."""
+
     pass
 
 
 async def get_db() -> AsyncSession:
+    """FastAPI dependency that yields an async database session.
+
+    Commits on success, rolls back on exception, always closes.
+    """
     async with async_session_factory() as session:
         try:
             yield session

@@ -1,3 +1,9 @@
+"""Channel configuration and webhook endpoints.
+
+Currently supports Telegram as a messaging channel.
+TelegramBot reads incoming messages and triggers configured workflows.
+"""
+
 from sqlalchemy import select
 
 from fastapi import APIRouter, Depends, Request
@@ -15,22 +21,20 @@ router = APIRouter(prefix="/channels", tags=["channels"])
 
 @router.get("")
 async def list_channels(db: AsyncSession = Depends(get_db)):
+    """List all configured channels."""
     result = await db.execute(select(Channel).order_by(Channel.created_at.desc()))
-    channels = result.scalars().all()
     return [
         {
-            "id": str(c.id),
-            "name": c.name,
-            "type": c.type,
-            "config": c.config,
-            "created_at": c.created_at.isoformat(),
+            "id": str(c.id), "name": c.name, "type": c.type,
+            "config": c.config, "created_at": c.created_at.isoformat(),
         }
-        for c in channels
+        for c in result.scalars().all()
     ]
 
 
 @router.post("", status_code=201)
 async def create_channel(body: dict, db: AsyncSession = Depends(get_db)):
+    """Create a new channel (e.g., Telegram bot connection)."""
     channel = Channel(name=body["name"], type=body.get("type", "telegram"), config=body.get("config", {}))
     db.add(channel)
     await db.flush()
@@ -40,18 +44,18 @@ async def create_channel(body: dict, db: AsyncSession = Depends(get_db)):
         await tg.set_webhook()
 
     return {
-        "id": str(channel.id),
-        "name": channel.name,
-        "type": channel.type,
-        "config": channel.config,
-        "created_at": channel.created_at.isoformat(),
+        "id": str(channel.id), "name": channel.name, "type": channel.type,
+        "config": channel.config, "created_at": channel.created_at.isoformat(),
     }
 
 
 @router.post("/webhook/telegram")
 async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db)):
-    payload = await request.json()
+    """Receive incoming Telegram messages via webhook.
 
+    Parses the message, persists it, and triggers the bound workflow if configured.
+    """
+    payload = await request.json()
     tg = TelegramChannel(settings.telegram_bot_token)
     result = await tg.process_webhook(payload)
 
@@ -63,15 +67,12 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
 
     msg = ChannelMessage(
         channel_id=channel.id if channel else None,
-        direction="incoming",
-        text=result["text"],
-        msg_metadata=result,
+        direction="incoming", text=result["text"], msg_metadata=result,
     )
     db.add(msg)
     await db.flush()
 
     workflow_id = channel.config.get("workflow_id") if channel else None
-
     if workflow_id:
         wf_def_result = await db.execute(select(WorkflowDef).where(WorkflowDef.id == workflow_id))
         wf_def = wf_def_result.scalar_one_or_none()

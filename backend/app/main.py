@@ -1,8 +1,16 @@
+"""FastAPI application entry point.
+
+Initializes the database schema on startup, configures CORS and auth middleware,
+and registers all API routers under their respective prefixes.
+
+Health check at /health is public (no auth).
+All other routes require Authorization: Bearer if CEREBRA_API_KEY is set.
+"""
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api import agents, channels, providers, runs, templates, tools, workflows, ws
 from app.auth import verify_api_key
@@ -12,6 +20,7 @@ from app.db import Base, engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Create all database tables on startup. In production, use Alembic migrations."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -21,18 +30,19 @@ app = FastAPI(title="Cerebra", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins.split(",") if settings.cors_origins else ["http://localhost:5173", "http://localhost:8000"],
+    allow_origins=settings.cors_origins.split(",") if settings.cors_origins else ["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 
 @app.middleware("http")
 async def auth_middleware(request, call_next):
+    """Validate API key on all requests except public paths."""
     await verify_api_key(request)
     return await call_next(request)
+
 
 app.include_router(agents.router)
 app.include_router(workflows.router)
@@ -46,4 +56,5 @@ app.include_router(ws.router)
 
 @app.get("/health")
 async def health():
+    """Health check endpoint. Returns {"status": "ok"} when the app is running."""
     return {"status": "ok"}

@@ -1,3 +1,8 @@
+"""Workflow executor — runs a compiled LangGraph graph with event streaming.
+
+Events are published to Redis (per-run channel) and optionally persisted to DB.
+"""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -15,6 +20,17 @@ async def run_workflow(
     run_id: str | None = None,
     db: AsyncSession | None = None,
 ) -> str:
+    """Execute a workflow definition with the given input message.
+
+    Args:
+        workflow_def: Dict with nodes, edges, entry_node keys.
+        input_message: The user message to start the workflow with.
+        run_id: Optional run ID (generated if not provided).
+        db: Optional DB session for persisting events.
+
+    Returns:
+        The run ID.
+    """
     rid = run_id or str(uuid.uuid4())
     nodes = workflow_def.get("nodes", [])
     edges = workflow_def.get("edges", [])
@@ -22,9 +38,8 @@ async def run_workflow(
 
     agent_configs = {}
     for node in nodes:
-        nid = node["id"]
         if node["type"] == "agent":
-            agent_configs[nid] = node.get("config", {})
+            agent_configs[node["id"]] = node.get("config", {})
 
     graph = compile_workflow(nodes, edges, entry_node)
 
@@ -37,12 +52,7 @@ async def run_workflow(
         "run_id": rid,
     }
 
-    event = {
-        "run_id": rid,
-        "type": "run_start",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "payload": {"input": input_message},
-    }
+    event = {"run_id": rid, "type": "run_start", "timestamp": datetime.now(timezone.utc).isoformat(), "payload": {"input": input_message}}
     await publish(f"run:events:{rid}", event)
     if db:
         await run_service.add_run_event(db, rid, "run_start", "system", {"input": input_message})
@@ -50,21 +60,11 @@ async def run_workflow(
     try:
         result = await graph.ainvoke(initial_state)
     except Exception:
-        event = {
-            "run_id": rid,
-            "type": "run_error",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "payload": {"error": "Workflow execution failed"},
-        }
+        event = {"run_id": rid, "type": "run_error", "timestamp": datetime.now(timezone.utc).isoformat(), "payload": {"error": "Workflow execution failed"}}
         await publish(f"run:events:{rid}", event)
         raise
 
-    event = {
-        "run_id": rid,
-        "type": "run_end",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "payload": {"messages": result.get("messages", [])},
-    }
+    event = {"run_id": rid, "type": "run_end", "timestamp": datetime.now(timezone.utc).isoformat(), "payload": {"messages": str(result.get("messages", []))}}
     await publish(f"run:events:{rid}", event)
     if db:
         await run_service.add_run_event(db, rid, "run_end", "system", {"messages": str(result.get("messages", []))})

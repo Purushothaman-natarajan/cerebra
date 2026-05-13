@@ -1,5 +1,10 @@
+"""Encryption utilities for sensitive data at rest.
+
+Uses Fernet (symmetric encryption via cryptography) with a PBKDF2-derived key.
+If ENCRYPTION_KEY is unset, values pass through unencrypted (dev mode).
+"""
+
 import base64
-import os
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -9,6 +14,7 @@ from app.config import settings
 
 
 def _get_fernet() -> Fernet | None:
+    """Derive a Fernet cipher from the configured ENCRYPTION_KEY using PBKDF2."""
     key = settings.encryption_key
     if not key:
         return None
@@ -18,6 +24,7 @@ def _get_fernet() -> Fernet | None:
 
 
 def encrypt_value(plaintext: str) -> str:
+    """Encrypt a string. Returns ciphertext as a base64 string."""
     f = _get_fernet()
     if f is None:
         return plaintext
@@ -25,6 +32,7 @@ def encrypt_value(plaintext: str) -> str:
 
 
 def decrypt_value(ciphertext: str) -> str:
+    """Decrypt a string previously encrypted with encrypt_value."""
     f = _get_fernet()
     if f is None:
         return ciphertext
@@ -32,6 +40,7 @@ def decrypt_value(ciphertext: str) -> str:
 
 
 def mask_key(key: str) -> str:
+    """Return a masked version of an API key showing only first/last 4 chars."""
     if not key or len(key) < 8:
         return "********"
     return key[:4] + "..." + key[-4:]

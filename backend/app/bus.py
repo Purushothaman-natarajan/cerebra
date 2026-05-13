@@ -1,3 +1,12 @@
+"""Redis pub/sub wrapper for inter-service event streaming.
+
+Used for:
+- Streaming run events (agent_start, tool_call, run_end) to WebSocket clients
+- Future cross-service messaging
+
+Degrades gracefully when Redis is unavailable — events are lost but the app continues.
+"""
+
 import json
 import logging
 
@@ -11,6 +20,7 @@ _redis: aioredis.Redis | None = None
 
 
 async def get_redis() -> aioredis.Redis | None:
+    """Lazy-init Redis connection. Returns None if Redis is unreachable."""
     global _redis
     if _redis is None:
         try:
@@ -23,6 +33,7 @@ async def get_redis() -> aioredis.Redis | None:
 
 
 async def publish(channel: str, message: dict):
+    """Publish a JSON-serializable message to a Redis channel."""
     r = await get_redis()
     if r is None:
         return
@@ -33,6 +44,7 @@ async def publish(channel: str, message: dict):
 
 
 async def subscribe(channel: str):
+    """Subscribe to a Redis channel. Returns a pubsub object or None."""
     r = await get_redis()
     if r is None:
         return None

@@ -1,3 +1,5 @@
+"""Custom tool ORM model — user-defined extensions for agents."""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -9,6 +11,13 @@ from app.db import Base
 
 
 class CustomTool(Base):
+    """A user-defined tool that extends agent capabilities beyond built-ins.
+
+    Supports HTTP calls, Python code execution, and webhook integrations.
+    Built-in tools (web_search, calculator, etc.) are registered via decorators,
+    custom tools are stored in this table.
+    """
+
     __tablename__ = "custom_tools"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)

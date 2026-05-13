@@ -1,3 +1,5 @@
+/** Application entry point. Sets up React 19 with routing, query caching, and toast notifications. */
+
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import { BrowserRouter } from "react-router-dom"

@@ -1,18 +1,28 @@
+"""Agent execution node for LangGraph.
+
+Each agent node runs an LLM call loop: the model responds with either text
+or a tool call. Tool calls are executed and results fed back to the model.
+The loop continues until the model produces text or max_iterations is reached.
+"""
+
 from app.runtime.llm import call_llm_with_tools
 from app.runtime.tools.registry import get_tool, get_tool_definitions
 
 
 async def agent_node(state: dict) -> dict:
-    agent_id = state.get("_current_agent_id")
-    agent_configs = state.get("_agent_configs", {})
-    agent_config = agent_configs.get(agent_id, {})
+    """Execute an agent node: LLM call + optional tool execution loop.
 
-    system_prompt = agent_config.get("system_prompt", "")
-    model = agent_config.get("model", "gemini-2.0-flash")
-    tool_names = agent_config.get("tools", [])
-    max_iterations = agent_config.get("max_iterations", 10)
-    guardrails = agent_config.get("guardrails", {})
-    blocked_topics = guardrails.get("blocked_topics", [])
+    Reads agent config from state._agent_configs[_current_agent_id].
+    Appends messages to state.messages as the loop progresses.
+    """
+    agent_id = state.get("_current_agent_id")
+    cfg = state.get("_agent_configs", {}).get(agent_id, {})
+
+    system_prompt = cfg.get("system_prompt", "")
+    model = cfg.get("model", "gemini-2.0-flash")
+    tool_names = cfg.get("tools", [])
+    max_iterations = cfg.get("max_iterations", 10)
+    blocked_topics = cfg.get("guardrails", {}).get("blocked_topics", [])
 
     messages = state.get("messages", [])
     tool_defs = [t for t in get_tool_definitions() if t["name"] in tool_names]
@@ -35,6 +45,9 @@ async def agent_node(state: dict) -> dict:
             messages.append({"role": "assistant", "content": result})
             break
     else:
-        messages.append({"role": "assistant", "content": "I apologize, but I was unable to complete the request within the allowed number of steps. Please try a simpler query or increase the max_iterations setting."})
+        messages.append({
+            "role": "assistant",
+            "content": "I was unable to complete the request within the allowed steps. Please try a simpler query or increase max_iterations.",
+        })
 
     return {"messages": messages}

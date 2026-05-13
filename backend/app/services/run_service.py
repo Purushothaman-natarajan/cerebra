@@ -1,3 +1,5 @@
+"""Run and RunEvent business logic."""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -39,9 +41,7 @@ async def update_run_status(db: AsyncSession, run_id: str, status: str) -> Run |
 
 async def get_run_events(db: AsyncSession, run_id: str) -> list[RunEvent]:
     result = await db.execute(
-        select(RunEvent)
-        .where(RunEvent.run_id == uuid.UUID(run_id))
-        .order_by(RunEvent.timestamp)
+        select(RunEvent).where(RunEvent.run_id == uuid.UUID(run_id)).order_by(RunEvent.timestamp)
     )
     return list(result.scalars().all())
 

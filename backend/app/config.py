@@ -1,7 +1,19 @@
+"""Application configuration via environment variables.
+
+All settings are loaded from `.env` file or environment variables with sensible defaults.
+Uses pydantic-settings for validation and type coercion.
+"""
+
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    """Runtime configuration loaded from environment variables.
+
+    Every field has a default so the app boots without a .env file.
+    Required values (gemini_api_key) will error at first LLM call if unset.
+    """
+
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/cerebra"
     redis_url: str = "redis://localhost:6379/0"
     gemini_api_key: str = ""

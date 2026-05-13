@@ -1,3 +1,5 @@
+"""Channel and ChannelMessage ORM models — messaging integration."""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -9,6 +11,8 @@ from app.db import Base
 
 
 class Channel(Base):
+    """A messaging channel (e.g., Telegram bot) that can trigger workflows."""
+
     __tablename__ = "channels"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -19,6 +23,8 @@ class Channel(Base):
 
 
 class ChannelMessage(Base):
+    """A message sent or received via a messaging channel."""
+
     __tablename__ = "channel_messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

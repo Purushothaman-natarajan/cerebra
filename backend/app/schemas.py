@@ -1,5 +1,4 @@
-import uuid
-from datetime import datetime
+"""Pydantic schemas for API request/response serialization."""
 
 from pydantic import BaseModel
 
@@ -116,26 +115,6 @@ class RunResponse(BaseModel):
             status=run.status,
             started_at=run.started_at.isoformat() if run.started_at else None,
             finished_at=run.finished_at.isoformat() if run.finished_at else None,
-        )
-
-
-class ChannelMessageResponse(BaseModel):
-    id: int
-    channel_id: str
-    direction: str
-    text: str
-    msg_metadata: dict
-    created_at: str
-
-    @classmethod
-    def from_orm(cls, msg) -> "ChannelMessageResponse":
-        return cls(
-            id=msg.id,
-            channel_id=str(msg.channel_id) if msg.channel_id else "",
-            direction=msg.direction,
-            text=msg.text,
-            msg_metadata=msg.msg_metadata,
-            created_at=msg.created_at.isoformat(),
         )
 
 
