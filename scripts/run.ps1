@@ -5,7 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$rootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$rootDir = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
 function Write-Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Write-OK($msg)   { Write-Host "  ✓ $msg" -ForegroundColor Green }
@@ -17,7 +17,6 @@ Write-Step "Checking prerequisites"
 $hasUv = $null -ne (Get-Command "uv" -ErrorAction SilentlyContinue)
 if (-not $hasUv) {
     Write-Host "uv not found. Install it: powershell -c `"irm https://astral.sh/uv/install.ps1 | iex`"" -ForegroundColor Yellow
-    Write-Host "Or install manually: https://docs.astral.sh/uv/#installation" -ForegroundColor Yellow
     exit 1
 }
 Write-OK "uv found"
@@ -65,11 +64,11 @@ Pop-Location
 
 # ── Start backend ────────────────────────────────────────────────────
 Write-Step "Starting backend"
-$backendLog = "$rootDir\backend.log"
+$backendLog = "$rootDir\scripts\logs\backend.log"
 Push-Location "$rootDir\backend"
 $backendJob = Start-Process -NoNewWindow -PassThru -FilePath (Get-Command "uv").Source -ArgumentList "run uvicorn app.main:app --reload --port 8000" -RedirectStandardOutput $backendLog -RedirectStandardError $backendLog
 Pop-Location
-Write-OK "Backend starting (PID: $($backendJob.Id)) — log: backend.log"
+Write-OK "Backend starting (PID: $($backendJob.Id)) — see scripts/logs/backend.log"
 
 # Wait for backend to be ready
 Write-Step "Waiting for backend..."
@@ -78,30 +77,23 @@ for ($i = 0; $i -lt 30; $i++) {
     Start-Sleep -Seconds 1
     try {
         $response = Invoke-WebRequest -Uri "http://localhost:8000/health" -UseBasicParsing -TimeoutSec 2
-        if ($response.StatusCode -eq 200) {
-            $ready = $true
-            break
-        }
+        if ($response.StatusCode -eq 200) { $ready = $true; break }
     } catch {}
 }
-if ($ready) {
-    Write-OK "Backend ready at http://localhost:8000"
-} else {
-    Write-Warn "Backend not ready after 30s — check backend.log"
-}
+if ($ready) { Write-OK "Backend ready at http://localhost:8000" } else { Write-Warn "Backend not ready after 30s — check backend.log" }
 
 # ── Start frontend ───────────────────────────────────────────────────
 Write-Step "Starting frontend"
-$frontendLog = "$rootDir\frontend.log"
+$frontendLog = "$rootDir\scripts\logs\frontend.log"
 Push-Location "$rootDir\frontend"
 $frontendJob = Start-Process -NoNewWindow -PassThru -FilePath "cmd.exe" -ArgumentList "/c npm run dev" -RedirectStandardOutput $frontendLog -RedirectStandardError $frontendLog
 Pop-Location
-Write-OK "Frontend starting (PID: $($frontendJob.Id)) — log: frontend.log"
+Write-OK "Frontend starting (PID: $($frontendJob.Id)) — see scripts/logs/frontend.log"
 
 Start-Sleep -Seconds 3
-
 $frontendUrl = "http://localhost:5173"
-Write-Host "`n" -NoNewline
+
+Write-Host "`n"
 Write-Host "╔══════════════════════════════════════════════╗" -ForegroundColor Green
 Write-Host "║  Cerebra is running!                        ║" -ForegroundColor Green
 Write-Host "║  Frontend: $frontendUrl" -ForegroundColor Green
@@ -109,19 +101,16 @@ Write-Host "║  Backend:  http://localhost:8000             ║" -ForegroundCol
 Write-Host "║  API Docs: http://localhost:8000/docs        ║" -ForegroundColor Green
 Write-Host "╚══════════════════════════════════════════════╝" -ForegroundColor Green
 
-if (-not $NoOpen) {
-    Start-Process $frontendUrl
-}
-
+if (-not $NoOpen) { Start-Process $frontendUrl }
 Write-Host "`nPress Ctrl+C to stop all services" -ForegroundColor Gray
 
 # ── Wait and cleanup ────────────────────────────────────────────────
-try {
-    while ($true) { Start-Sleep -Seconds 1 }
-}
+try { while ($true) { Start-Sleep -Seconds 1 } }
 finally {
     Write-Step "Shutting down..."
     if ($backendJob -and -not $backendJob.HasExited) { $backendJob.Kill() }
     if ($frontendJob -and -not $frontendJob.HasExited) { $frontendJob.Kill() }
+    # Kill any lingering uvicorn/node processes from background windows
+    Get-Process "uvicorn", "node" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     Write-OK "Stopped"
 }

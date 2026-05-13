@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 echo.
 echo === Cerebra - One Click Run ===
@@ -55,12 +55,10 @@ if %errorlevel% neq 0 (
 )
 echo [OK] Backend dependencies ready
 
-:: Start backend
 echo [INFO] Starting backend on port 8000...
 start "cerebra-backend" cmd /c "uv run uvicorn app.main:app --reload --port 8000"
 cd ..
 
-:: Wait for backend
 echo [INFO] Waiting for backend...
 set ready=0
 for /l %%i in (1,1,30) do (
@@ -79,7 +77,6 @@ echo [INFO] Setting up frontend...
 cd frontend
 call npm install >nul 2>&1
 
-:: Start frontend
 echo [INFO] Starting frontend on port 5173...
 start "cerebra-frontend" cmd /c "npm run dev"
 cd ..
@@ -101,7 +98,6 @@ echo.
 echo Close this window to stop the servers.
 echo.
 
-:: Wait for user to close the window
 pause >nul
 
 :: ── Cleanup ─────────────────────────────────────────────────────────

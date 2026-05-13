@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+LOG_DIR="$ROOT_DIR/scripts/logs"
+mkdir -p "$LOG_DIR"
 
 step() { echo -e "\n==> $1"; }
 ok()   { echo "  ✓ $1"; }
@@ -25,7 +27,7 @@ ok "Node.js $(node --version)"
 # ── Start Docker services ────────────────────────────────────────────
 if command -v docker &>/dev/null; then
     step "Starting Postgres + Redis via Docker"
-    docker compose up postgres redis -d 2>/dev/null && ok "Postgres + Redis started" || warn "Docker compose failed"
+    (cd "$ROOT_DIR" && docker compose up postgres redis -d 2>/dev/null) && ok "Postgres + Redis started" || warn "Docker compose failed"
 else
     warn "Docker not found — ensure postgres/redis are running externally"
 fi
@@ -47,24 +49,24 @@ ok "Frontend deps installed"
 # ── Start backend ────────────────────────────────────────────────────
 step "Starting backend"
 cd "$ROOT_DIR/backend"
-uv run uvicorn app.main:app --reload --port 8000 &>/tmp/cerebra-backend.log &
+uv run uvicorn app.main:app --reload --port 8000 &>"$LOG_DIR/backend.log" &
 BACKEND_PID=$!
-ok "Backend starting (PID: $BACKEND_PID) — tail -f /tmp/cerebra-backend.log"
+ok "Backend starting (PID: $BACKEND_PID) — tail -f $LOG_DIR/backend.log"
 
 # Wait for backend
 step "Waiting for backend..."
 for i in $(seq 1 30); do
     sleep 1
     curl -sf http://localhost:8000/health >/dev/null 2>&1 && { ok "Backend ready at http://localhost:8000"; break; }
-    if [ "$i" -eq 30 ]; then warn "Backend not ready after 30s — check /tmp/cerebra-backend.log"; fi
+    [ "$i" -eq 30 ] && warn "Backend not ready after 30s — check $LOG_DIR/backend.log"
 done
 
 # ── Start frontend ───────────────────────────────────────────────────
 step "Starting frontend"
 cd "$ROOT_DIR/frontend"
-npm run dev &>/tmp/cerebra-frontend.log &
+npm run dev &>"$LOG_DIR/frontend.log" &
 FRONTEND_PID=$!
-ok "Frontend starting (PID: $FRONTEND_PID) — tail -f /tmp/cerebra-frontend.log"
+ok "Frontend starting (PID: $FRONTEND_PID) — tail -f $LOG_DIR/frontend.log"
 sleep 3
 
 FRONTEND_URL="http://localhost:5173"
@@ -84,6 +86,5 @@ esac
 
 echo -e "\nPress Ctrl+C to stop all services"
 
-# ── Cleanup on exit ──────────────────────────────────────────────────
 trap "echo ''; step 'Shutting down...'; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; ok 'Stopped'" EXIT
 wait

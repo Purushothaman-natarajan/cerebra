@@ -6,6 +6,7 @@ __pycache__/
 dist/
 .pytest_cache/
 .vscode/
+scripts/logs/
 *.log
 .DS_Store
 secrets/
