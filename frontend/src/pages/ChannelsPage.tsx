@@ -1,6 +1,5 @@
 import { useState } from "react"
-
-const BASE = "/api"
+import { apiFetch } from "../api/client"
 
 export default function ChannelsPage() {
   const [token, setToken] = useState("")
@@ -16,16 +15,14 @@ export default function ChannelsPage() {
     setSaving(true)
     setMessage(null)
     try {
-      const res = await fetch(`${BASE}/channels`, {
+      await apiFetch("/channels", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: "Telegram",
           type: "telegram",
           config: { bot_token: token, webhook_url: webhookUrl },
         }),
       })
-      if (!res.ok) throw new Error("Failed to save")
       setMessage({ type: "success", text: "Telegram channel configured successfully" })
     } catch (e) {
       setMessage({ type: "error", text: e instanceof Error ? e.message : "Failed to save" })

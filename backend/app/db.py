@@ -9,12 +9,14 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
 
-engine = create_async_engine(
-    settings.database_url,
-    echo=False,
-    pool_size=settings.db_pool_size,
-    max_overflow=settings.db_max_overflow,
-)
+if settings.database_url.startswith("sqlite"):
+    _url = settings.database_url
+    _connect_args = {}
+else:
+    _url = settings.database_url
+    _connect_args = {"pool_size": settings.db_pool_size, "max_overflow": settings.db_max_overflow}
+
+engine = create_async_engine(_url, echo=False, **_connect_args)
 async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 

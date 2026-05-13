@@ -20,9 +20,13 @@ from app.db import Base, engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Create all database tables on startup. In production, use Alembic migrations."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """Create all database tables on startup. Skip gracefully if DB is unavailable."""
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        import logging
+        logging.warning("Database unavailable at startup (%s). Tables will be created when DB is ready.", e)
     yield
 
 
@@ -40,7 +44,9 @@ app.add_middleware(
 @app.middleware("http")
 async def auth_middleware(request, call_next):
     """Validate API key on all requests except public paths."""
-    await verify_api_key(request)
+    response = await verify_api_key(request)
+    if response:
+        return response
     return await call_next(request)
 
 
