@@ -50,7 +50,7 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
       )}
       <aside className={`${collapsed ? "-translate-x-full" : "translate-x-0"} fixed lg:sticky z-50 top-0 w-60 h-screen border-r border-border bg-card shrink-0 flex flex-col transition-all duration-300 ease-in-out`}>
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border">
-          <span className="text-lg font-bold tracking-tight" style={{ color: "var(--accent)" }}>Cerebra</span>
+          <span className="text-lg font-bold tracking-tight" style={{ color: "var(--accent)" }}>Cerebra‑AI</span>
           <button onClick={onToggle} className="lg:hidden p-1.5 rounded-lg hover:bg-accent-soft transition-colors">
             <X className="w-4 h-4" />
           </button>
@@ -113,7 +113,7 @@ function AppContent() {
           <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded-lg hover:bg-accent-soft transition-colors">
             <Menu className="w-5 h-5" />
           </button>
-          <span className="text-sm font-bold tracking-tight" style={{ color: "var(--accent)" }}>Cerebra</span>
+          <span className="text-sm font-bold tracking-tight" style={{ color: "var(--accent)" }}>Cerebra‑AI</span>
           <div className="ml-auto flex items-center gap-1 text-[10px] text-muted">
             <Shield className="w-3 h-3" />
             <span>Encrypted</span>

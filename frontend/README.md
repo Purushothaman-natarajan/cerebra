@@ -1,4 +1,4 @@
-# Cerebra — Frontend
+# Cerebra‑AI — Frontend
 
 AI Agent Orchestration Platform frontend. React 19 + TypeScript + ReactFlow + Tailwind.
 

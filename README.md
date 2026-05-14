@@ -1,4 +1,4 @@
-# Cerebra
+# Cerebra‑AI
 
 AI Agent Orchestration Platform — multi-agent workflows with visual canvas, multi-LLM support, custom tool building, Telegram integration, and template library.
 
@@ -42,7 +42,7 @@ PostgreSQL (state, history, encrypted keys)   Telegram Bot (webhook)
 ## Navigation
 
 ```
-Cerebra
+Cerebra‑AI
   ⚡ Providers → 📋 Templates → 🔧 Tools → 🤖 Agents
   → 🔀 Workflows → 📡 Channels → ▶️ Runs → ⚙️ Settings
 ```

@@ -42,7 +42,10 @@ export default function TemplatesPage() {
       {isError && (
         <div className="flex items-center gap-3 p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-sm text-rose-700 dark:text-rose-400">
           <AlertCircle className="w-5 h-5 shrink-0" />
-          <span>Could not load templates. Make sure the backend is running.</span>
+          <span>Could not load templates. Make sure the backend is running on port 8000.</span>
+          <button onClick={() => window.location.reload()} className="ml-auto px-3 py-1 rounded-lg bg-rose-200 dark:bg-rose-800 hover:bg-rose-300 dark:hover:bg-rose-700 transition-colors text-xs font-medium">
+            Retry
+          </button>
         </div>
       )}
 

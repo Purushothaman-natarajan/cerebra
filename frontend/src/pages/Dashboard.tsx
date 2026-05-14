@@ -34,7 +34,7 @@ export default function Dashboard() {
       {/* Onboarding */}
       {!hasData && (
         <div className="p-6 rounded-2xl border border-accent/30 bg-accent-soft/30 backdrop-blur-sm animate-in">
-          <h2 className="text-lg font-semibold text-foreground mb-1">Welcome to Cerebra</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-1">Welcome to Cerebra‑AI</h2>
           <p className="text-sm text-muted mb-5">Build your first multi-agent workflow in 5 steps:</p>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[

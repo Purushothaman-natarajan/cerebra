@@ -7,7 +7,7 @@ import { Shield, Bell, Sliders, AlertTriangle, Check } from "lucide-react"
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
-  const [platformName, setPlatformName] = useState("Cerebra")
+  const [platformName, setPlatformName] = useState("Cerebra-AI")
   const [notifyFailure, setNotifyFailure] = useState(() => localStorage.getItem("cerebra-notify-failure") !== "false")
   const [notifyComplete, setNotifyComplete] = useState(() => localStorage.getItem("cerebra-notify-complete") === "true")
   const [defaultTimeout, setDefaultTimeout] = useState("60")

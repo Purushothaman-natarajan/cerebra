@@ -1,4 +1,4 @@
-# Cerebra — Project Roadmap
+# Cerebra-AI — Project Roadmap
 
 > AI Agent Orchestration Platform.
 
@@ -63,7 +63,7 @@ Build a production-grade, locally-runnable platform where:
 - [x] WebSocket origin, sanitized errors
 
 ### Phase 7 — UI Redesign & Polish
-- [x] Rename to Cerebra, responsive sidebar
+- [x] Rename to Cerebra-AI, responsive sidebar
 - [x] Theme system: light/dark/system, 6 accent colors
 - [x] 14-component design system
 - [x] Loading skeletons, error states, empty states, error boundaries
@@ -103,7 +103,7 @@ Build a production-grade, locally-runnable platform where:
 ## Site Navigation
 
 ```
-Cerebra
+Cerebra-AI
 ⚡ Providers → 📋 Templates → 🔧 Tools → 🤖 Agents
 → 🔀 Workflows → 📡 Channels → ▶️ Runs → ⚙️ Settings
 ```
