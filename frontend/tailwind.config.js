@@ -10,6 +10,10 @@ export default {
         accent: "var(--accent)",
         "accent-hover": "var(--accent-hover)",
         "accent-soft": "var(--accent-soft)",
+        success: "var(--success)",
+        warning: "var(--warning)",
+        error: "var(--error)",
+        info: "var(--info)",
         border: "var(--border)",
         card: "var(--bg-card)",
         surface: "var(--bg-secondary)",
@@ -21,6 +25,10 @@ export default {
       boxShadow: {
         soft: "var(--shadow)",
         strong: "var(--shadow-lg)",
+      },
+      fontFamily: {
+        sans: ['"Inter"', "system-ui", "-apple-system", "sans-serif"],
+        mono: ['"JetBrains Mono"', "Menlo", "monospace"],
       },
     },
   },

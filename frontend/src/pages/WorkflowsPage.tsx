@@ -79,7 +79,7 @@ export default function WorkflowsPage() {
   return (
     <div className="flex h-screen">
       {/* Workflow list sidebar */}
-      <div className="w-72 border-r border-border p-4 overflow-y-auto bg-card shrink-0">
+      <div className="w-60 border-r border-border p-4 overflow-y-auto bg-card shrink-0">
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-semibold text-foreground text-sm">Workflows</h2>
           <div className="flex gap-1">

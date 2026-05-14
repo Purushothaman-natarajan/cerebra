@@ -1,12 +1,14 @@
+/** Button component — 5 variants, 3 sizes, loading state, theme-aware colors. */
+
 import { forwardRef, type ButtonHTMLAttributes } from "react"
 import { cn } from "./cn"
 import { Loader2 } from "lucide-react"
 
 const variants = {
-  primary: "bg-accent text-white hover:bg-accent-hover shadow-soft",
+  primary: "text-white hover:opacity-90 shadow-soft",
   secondary: "bg-card border border-border text-foreground hover:bg-accent-soft",
   ghost: "text-muted hover:text-foreground hover:bg-accent-soft",
-  danger: "bg-rose-600 text-white hover:bg-rose-700",
+  danger: "text-white hover:opacity-90",
   outline: "border border-border bg-transparent text-foreground hover:bg-accent-soft",
 }
 
@@ -33,6 +35,11 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         sizes[size],
         className
       )}
+      style={
+        variant === "primary" ? { background: "var(--accent)" } :
+        variant === "danger" ? { background: "var(--error)" } :
+        undefined
+      }
       {...props}
     >
       {loading && <Loader2 className="w-4 h-4 animate-spin" />}

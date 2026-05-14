@@ -31,7 +31,7 @@ export default function RunsPage() {
   return (
     <div className="flex h-screen">
       {/* Runs list */}
-      <div className="w-80 border-r border-border p-4 overflow-y-auto bg-card shrink-0">
+      <div className="w-60 border-r border-border p-4 overflow-y-auto bg-card shrink-0">
         <h2 className="font-semibold text-foreground text-sm mb-4">▶️ Runs</h2>
 
         <div className="mb-4 p-3 rounded-lg border border-border bg-surface">
