@@ -54,13 +54,13 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden" onClick={onToggle} />
       )}
       <aside className={`${collapsed ? "-translate-x-full" : "translate-x-0"} fixed lg:static z-50 w-60 h-full border-r border-border bg-card shrink-0 flex flex-col transition-all duration-300 ease-in-out`}>
-        <div className="flex items-center justify-between px-4 py-4 border-b border-border">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border">
           <span className="text-lg font-bold tracking-tight" style={{ color: "var(--accent)" }}>Cerebra</span>
           <button onClick={onToggle} className="lg:hidden p-1.5 rounded-lg hover:bg-accent-soft transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
-        <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 px-3 sm:px-5 py-2 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.to || (item.to !== "/" && location.pathname.startsWith(item.to))
             return (
@@ -78,7 +78,7 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
             )
           })}
         </nav>
-        <div className="p-4 border-t border-border flex items-center justify-between">
+        <div className="p-4 sm:p-6 border-t border-border flex items-center justify-between">
           <AccentPicker />
           <ThemeToggle />
         </div>
