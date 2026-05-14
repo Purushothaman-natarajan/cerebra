@@ -1,11 +1,11 @@
 /** Runs screen — filterable list + detail timeline with agent traces, timing, cost estimates. */
 
 import { useState } from "react"
-import { useRuns, useRunEvents } from "@/api/runs"
+import { useRuns, useRunEvents, useTriggerRun } from "@/api/runs"
 import LiveLogs from "@/components/MonitorPanel/LiveLogs"
 import MessageTrace from "@/components/MonitorPanel/MessageTrace"
 import { Badge, Card, Select, SkeletonRow } from "@/components/ui"
-import { Activity, Clock, DollarSign, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { Activity, Clock, DollarSign, CheckCircle, XCircle, Loader2, FileText, RefreshCw, Play } from "lucide-react"
 
 const statusIcon: Record<string, typeof CheckCircle> = {
   completed: CheckCircle, failed: XCircle, running: Loader2, pending: Clock,
@@ -21,7 +21,8 @@ function formatDuration(ms: number): string {
 }
 
 export default function RunsPage() {
-  const { data: runs, isLoading } = useRuns()
+  const { data: runs, isLoading, refetch } = useRuns()
+  const { mutate: triggerRun } = useTriggerRun()
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState("all")
@@ -43,14 +44,26 @@ export default function RunsPage() {
     return acc
   }, {}) ?? {}
 
-  const estimatedCost = (events?.length ?? 0) * 0.0005
+  const realCost = selectedRun?.cost ?? 0
+  const realTokens = selectedRun?.total_tokens ?? 0
+
+  // Extract final output from run_end event
+  const runEndEvent = events?.find((e) => e.type === "run_end")
+  const runOutput: string = runEndEvent?.payload?.messages as string || ""
+  const runErrorEvent = events?.find((e) => e.type === "run_error")
+  const runError: string = runErrorEvent?.payload?.error as string || ""
 
   return (
     <div className="flex h-full">
       {/* Runs list */}
       <div className="w-60 border-r border-border overflow-y-auto bg-card shrink-0 flex flex-col">
         <div className="p-4 border-b border-border">
-          <h2 className="font-semibold text-foreground text-sm mb-3">Runs</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-foreground text-sm">Runs</h2>
+            <button onClick={() => refetch()} className="p-1 rounded-lg hover:bg-accent-soft transition-colors text-muted hover:text-foreground" title="Refresh">
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
           <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
             options={[
               { value: "all", label: "All runs" }, { value: "completed", label: "Completed" },
@@ -75,6 +88,7 @@ export default function RunsPage() {
                 </div>
                 <p className="text-[10px] text-muted">{run.started_at ? new Date(run.started_at).toLocaleString() : "—"}</p>
                 {duration && <p className="text-[10px] text-muted mt-0.5">{formatDuration(duration)}</p>}
+                {run.total_tokens > 0 && <p className="text-[10px] text-muted mt-0.5">{run.total_tokens} tok · ${run.cost.toFixed(6)}</p>}
               </Card>
             )
           })}
@@ -102,6 +116,16 @@ export default function RunsPage() {
                     : ""}
                 </p>
               </div>
+              <div className="flex gap-1">
+                <button onClick={() => refetch()} className="p-2 rounded-lg hover:bg-accent-soft transition-colors text-muted hover:text-foreground" title="Refresh run details">
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+                {selectedRun.status !== "running" && selectedRun.workflow_id && (
+                  <button onClick={() => triggerRun({ workflow_id: selectedRun.workflow_id, input: "" })} className="p-2 rounded-lg hover:bg-accent-soft transition-colors text-muted hover:text-foreground" title="Rerun this workflow">
+                    <Play className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Stats */}
@@ -114,17 +138,17 @@ export default function RunsPage() {
                 </div>
               </Card>
               <Card className="flex items-center gap-3 p-3">
-                <Clock className="w-4 h-4 text-muted shrink-0" />
+                <FileText className="w-4 h-4 text-muted shrink-0" />
                 <div>
-                  <p className="text-lg font-bold text-foreground">{Object.keys(agentTimings).length}</p>
-                  <p className="text-[10px] text-muted">Agents</p>
+                  <p className="text-lg font-bold text-foreground">{realTokens.toLocaleString()}</p>
+                  <p className="text-[10px] text-muted">Tokens</p>
                 </div>
               </Card>
               <Card className="flex items-center gap-3 p-3">
                 <DollarSign className="w-4 h-4 text-muted shrink-0" />
                 <div>
-                  <p className="text-lg font-bold text-foreground">${estimatedCost.toFixed(4)}</p>
-                  <p className="text-[10px] text-muted">Est. cost</p>
+                  <p className="text-lg font-bold text-foreground">${realCost.toFixed(6)}</p>
+                  <p className="text-[10px] text-muted">Cost (USD)</p>
                 </div>
               </Card>
               <Card className="flex items-center gap-3 p-3">
@@ -156,6 +180,20 @@ export default function RunsPage() {
                     )
                   })}
                 </div>
+              </Card>
+            )}
+
+            {/* Run Output */}
+            {(runOutput || runError) && (
+              <Card>
+                <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">Output</h3>
+                <pre className="text-sm text-foreground whitespace-pre-wrap break-words max-h-60 overflow-y-auto font-sans">
+                  {runError ? (
+                    <span className="text-rose-500">{runError}</span>
+                  ) : (
+                    runOutput
+                  )}
+                </pre>
               </Card>
             )}
 

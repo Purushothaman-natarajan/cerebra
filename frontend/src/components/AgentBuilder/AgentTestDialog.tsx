@@ -1,66 +1,55 @@
-/** Test tool dialog — input sample data, execute, see output with timing.
- *  Supports both custom tools (tool_id) and built-in tools (name). */
+/** Test agent dialog — input sample message, execute, see response with tokens/cost/timing. */
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button, Dialog, Input, Textarea } from "@/components/ui"
-import { Play, Clock, CheckCircle, XCircle } from "lucide-react"
-import { apiFetch } from "@/api/client"
-import { testBuiltinTool } from "@/api/tools"
+import { Bot, Clock, CheckCircle, XCircle } from "lucide-react"
+import { testAgent } from "@/api/agents"
 
 interface TestResult {
   ok: boolean
   output: string
+  prompt_tokens: number
+  completion_tokens: number
+  total_tokens: number
+  cost: number
   duration_ms: number
 }
 
 interface Props {
-  toolId?: string
-  toolName: string
-  isBuiltin?: boolean
+  agentName: string
+  agentId: string
   open: boolean
   onClose: () => void
-  initialInput?: string
 }
 
-export default function ToolTestDialog({ toolId, toolName, isBuiltin, open, onClose, initialInput = "" }: Props) {
-  const [input, setInput] = useState(initialInput)
+export default function AgentTestDialog({ agentName, agentId, open, onClose }: Props) {
+  const [input, setInput] = useState("")
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<TestResult | null>(null)
-
-  // Reset input when dialog opens or initialInput changes
-  useEffect(() => { if (open) setInput(initialInput) }, [open, initialInput])
 
   const handleTest = async () => {
     setRunning(true)
     setResult(null)
     try {
-      let res: TestResult
-      if (isBuiltin && toolId) {
-        res = await testBuiltinTool(toolId, input)
-      } else {
-        res = await apiFetch<TestResult>("/tools/test", {
-          method: "POST",
-          body: JSON.stringify({ tool_id: toolId, input }),
-        })
-      }
+      const res = await testAgent(agentId, input)
       setResult(res)
     } catch (e) {
-      setResult({ ok: false, output: e instanceof Error ? e.message : "Request failed", duration_ms: 0 })
+      setResult({ ok: false, output: e instanceof Error ? e.message : "Request failed", prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0, duration_ms: 0 })
     }
     setRunning(false)
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title={`Test: ${toolName}`} className="max-w-xl">
+    <Dialog open={open} onClose={onClose} title={`Test: ${agentName}`} className="max-w-xl">
       <div className="space-y-4">
         <Input
           label="Sample Input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Enter test input..."
+          placeholder="Enter a test message for the agent..."
         />
         <Button onClick={handleTest} loading={running} className="gap-2">
-          <Play className="w-4 h-4" /> Run Test
+          <Bot className="w-4 h-4" /> Run Test
         </Button>
 
         {result && (
@@ -83,6 +72,11 @@ export default function ToolTestDialog({ toolId, toolName, isBuiltin, open, onCl
               rows={4}
               className="text-xs font-mono"
             />
+            {result.total_tokens > 0 && (
+              <p className="text-[10px] text-muted mt-2">
+                {result.total_tokens} tokens · ${result.cost.toFixed(6)}
+              </p>
+            )}
           </div>
         )}
       </div>

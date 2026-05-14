@@ -1,13 +1,15 @@
-/** Agent card — emoji avatar, role, prompt preview, model badge, memory indicator, edit/delete. */
+/** Agent card — emoji avatar, role, prompt preview, model badge, memory indicator, edit/download/delete. */
 
 import type { Agent } from "@/api/agents"
-import { Pencil, Trash2, MemoryStick as Memory } from "lucide-react"
+import { Pencil, Trash2, MemoryStick as Memory, Download, Play } from "lucide-react"
 import { Badge } from "@/components/ui"
 
 interface Props {
   agent: Agent
   onEdit: () => void
   onDelete: () => void
+  onDownload?: () => void
+  onTest?: () => void
 }
 
 const roleEmojis: Record<string, string> = {
@@ -15,7 +17,7 @@ const roleEmojis: Record<string, string> = {
   billing: "💰", coding: "💻", default: "🤖",
 }
 
-export default function AgentCard({ agent, onEdit, onDelete }: Props) {
+export default function AgentCard({ agent, onEdit, onDelete, onDownload, onTest }: Props) {
   const emoji = Object.entries(roleEmojis).find(([key]) => agent.role.toLowerCase().includes(key))?.[1] || roleEmojis.default
 
   return (
@@ -44,6 +46,8 @@ export default function AgentCard({ agent, onEdit, onDelete }: Props) {
       <div className="flex items-center justify-between pt-2 border-t border-border">
         <span className="text-[10px] text-muted">Iterations: {agent.max_iterations}</span>
         <div className="flex gap-1">
+          {onDownload && <button onClick={onDownload} className="p-1.5 rounded-lg hover:bg-accent-soft transition-colors" title="Download"><Download className="w-3.5 h-3.5" /></button>}
+          {onTest && <button onClick={onTest} className="p-1.5 rounded-lg hover:bg-accent-soft transition-colors" title="Test Agent"><Play className="w-3.5 h-3.5" /></button>}
           <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-accent-soft transition-colors" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
           <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-500" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
         </div>

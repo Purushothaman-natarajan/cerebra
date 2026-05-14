@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/components/ui/Toast"
 import { apiFetch } from "./client"
 
-export interface WorkflowNode { id: string; type: "agent" | "router"; config: Record<string, unknown> }
+export interface WorkflowNode { id: string; type: "agent" | "router" | "human" | "output" | "note"; config: Record<string, unknown> }
 export interface WorkflowEdge { source: string; target: string; condition: string | null; fallback?: string }
 export interface Workflow {
   id: string; name: string; nodes: WorkflowNode[]; edges: WorkflowEdge[]

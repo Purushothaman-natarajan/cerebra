@@ -51,3 +51,18 @@ async def add_run_event(db: AsyncSession, run_id: str, event_type: str, agent_id
     db.add(event)
     await db.flush()
     return event
+
+
+async def update_run_tokens(
+    db: AsyncSession, run_id: str,
+    prompt_tokens: int, completion_tokens: int, total_tokens: int, cost: float,
+) -> Run | None:
+    run = await get_run(db, run_id)
+    if not run:
+        return None
+    run.prompt_tokens = prompt_tokens
+    run.completion_tokens = completion_tokens
+    run.total_tokens = total_tokens
+    run.cost = cost
+    await db.flush()
+    return run

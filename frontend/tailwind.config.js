@@ -27,8 +27,8 @@ export default {
         strong: "var(--shadow-lg)",
       },
       fontFamily: {
-        sans: ['"Inter"', "system-ui", "-apple-system", "sans-serif"],
-        mono: ['"JetBrains Mono"', "Menlo", "monospace"],
+        sans: ['"Manrope"', '"Inter"', "system-ui", "-apple-system", "sans-serif"],
+        mono: ['"JetBrains Mono"', '"SF Mono"', '"Fira Code"', "monospace"],
       },
     },
   },

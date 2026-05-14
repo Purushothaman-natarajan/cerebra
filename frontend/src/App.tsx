@@ -6,6 +6,7 @@ import { Zap, Wrench, Bot, GitBranch, Radio, Activity, Settings, Menu, X, FileTe
 import { ThemeProvider } from "@/contexts/ThemeContext"
 import ThemeToggle from "@/components/ui/ThemeToggle"
 import AccentPicker from "@/components/ui/AccentPicker"
+import { HelpButton } from "@/components/ui"
 
 // Lazy-loaded pages — ReactFlow and Recharts chunks are loaded on demand
 const Dashboard = lazy(() => import("@/pages/Dashboard"))
@@ -35,7 +36,7 @@ function BackButton() {
   if (location.pathname === "/") return null
   return (
     <button onClick={() => navigate(-1)}
-      className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-accent transition-colors mb-4 group"
+      className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-accent transition-colors group"
     >
       <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
       Back
@@ -81,18 +82,43 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
   )
 }
 
+const pageHelp: Record<string, { title: string; steps: string[] }> = {
+  "/": { title: "Dashboard", steps: ["View real-time activity across all workflows.", "See recent run stats and token usage.", "Check system health and provider status."] },
+  "/providers": { title: "Providers", steps: ["Add an LLM provider (OpenAI, Gemini, Anthropic, etc.).", "Click the provider preset or fill in the form manually.", "Test the connection to fetch available models.", "Toggle active/inactive to show or hide models."] },
+  "/templates": { title: "Templates", steps: ["Browse pre-built workflow templates.", "Click a template to preview its structure.", "Use a template as a starting point for your workflow."] },
+  "/tools": { title: "Tools", steps: ["Browse built-in tools (web_search, calculator, etc.).", "Create custom tools with HTTP, Python, or webhook types.", "Test a tool with sample input to verify it works.", "Toggle built-in tools to include them in agent configs."] },
+  "/agents": { title: "Agents", steps: ["Create an agent with a name, role, and system prompt.", "Select an LLM model from your configured providers.", "Enable tools the agent can use (web_search, calculator, etc.).", "Configure guardrails to block sensitive topics.", "Set max iterations to limit tool-calling loops."] },
+  "/channels": { title: "Channels", steps: ["Connect a Telegram bot to enable chat-based workflows.", "Enter the bot token from BotFather on Telegram.", "Bind a workflow to auto-trigger on incoming messages."] },
+  "/settings": { title: "Settings", steps: ["Configure your Gemini API key for LLM access.", "Adjust default pricing per provider model.", "View security info — keys are encrypted at rest.", "Export or import settings data.", "Danger Zone: clear all stored API keys."] },
+  "/workflows": { title: "Workflows", steps: ["Build a workflow by dragging and connecting nodes on the canvas.", "Each node can be an agent, router, or output.", "Connect nodes with edges to define execution order.", "Add conditions on edges for branching logic.", "Run the workflow with sample input to test it."] },
+  "/runs": { title: "Runs", steps: ["View all workflow executions, sorted newest first.", "Select a run to see its timeline and event trace.", "Monitor live logs with WebSocket streaming.", "Check token usage and estimated cost per run.", "Filter runs by status: completed, running, or failed."] },
+}
+
 function StandardPage({ children }: { children: ReactNode }) {
   const location = useLocation()
+  const help = pageHelp[location.pathname]
   return (
     <div className="p-4 sm:p-6 overflow-auto flex-1 flex flex-col min-h-0">
-      <BackButton />
+      <div className="flex items-center justify-between mb-4">
+        <BackButton />
+        {help && <HelpButton title={help.title} steps={help.steps} />}
+      </div>
       <div key={location.pathname} className="w-full flex-1 animate-in">{children}</div>
     </div>
   )
 }
 
 function FullPage({ children }: { children: ReactNode }) {
-  return <div className="flex-1 overflow-hidden min-h-0">{children}</div>
+  const location = useLocation()
+  const help = pageHelp[location.pathname]
+  return (
+    <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex items-center justify-end px-4 pt-2">
+        {help && <HelpButton title={help.title} steps={help.steps} />}
+      </div>
+      <div className="flex-1 overflow-hidden min-h-0">{children}</div>
+    </div>
+  )
 }
 
 function Loading() {

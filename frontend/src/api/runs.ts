@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/components/ui/Toast"
 import { apiFetch } from "./client"
 
-export interface Run { id: string; workflow_id: string; status: string; started_at: string | null; finished_at: string | null }
+export interface Run { id: string; workflow_id: string; status: string; started_at: string | null; finished_at: string | null; prompt_tokens: number; completion_tokens: number; total_tokens: number; cost: number }
 export interface RunEvent { id: number; run_id: string; timestamp: string; type: string; agent_id: string; payload: Record<string, unknown> }
 
 const fetchRuns = () => apiFetch<Run[]>("/runs")

@@ -21,3 +21,27 @@ export function useDeleteTool() {
   const qc = useQueryClient(); const { toast } = useToast()
   return useMutation({ mutationFn: deleteTool, onSuccess: () => { qc.invalidateQueries({ queryKey: ["tools"] }); toast("success", "Tool deleted") }, onError: (e: Error) => toast("error", e.message) })
 }
+
+// Test a built-in tool by name
+export async function testBuiltinTool(name: string, input: string): Promise<{ ok: boolean; output: string; duration_ms: number }> {
+  return apiFetch("/tools/test-builtin", { method: "POST", body: JSON.stringify({ tool_id: name, input }) })
+}
+
+// Tool export/import
+export async function exportAllTools(): Promise<void> {
+  const data = await apiFetch<Record<string, unknown>[]>("/tools/export")
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url; a.download = `cerebra-tools-${new Date().toISOString().slice(0, 10)}.json`
+  a.click(); URL.revokeObjectURL(url)
+}
+
+export function useImportTools() {
+  const qc = useQueryClient(); const { toast } = useToast()
+  return useMutation({
+    mutationFn: (tools: Record<string, unknown>[]) => apiFetch<{ imported: number }>("/tools/import", { method: "POST", body: JSON.stringify(tools) }),
+    onSuccess: (data) => { qc.invalidateQueries({ queryKey: ["tools"] }); toast("success", `Imported ${data.imported} tools`) },
+    onError: (e: Error) => toast("error", e.message),
+  })
+}

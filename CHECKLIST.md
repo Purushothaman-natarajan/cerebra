@@ -110,11 +110,49 @@ Tested with real Gemini API key against all 16 endpoints:
 | ✅ CI/CD triggers commented out | Uncommented `on:` block — runs on push/PR to main |
 | ✅ Frontend chunk size >500KB | Code-split: lazy routes + manualChunks. Largest chunk now 248KB (was 505KB) |
 
-## Remaining Items / Leftovers
+## Sprint 2 — Complete ✅ (All 5 items done)
 
-| Priority | Item | Notes |
-|----------|------|-------|
-| Low | No schedule trigger | `trigger.type: "schedule"` in model but no APScheduler |
-| Low | No human-in-the-loop | `HumanNode` frontend exists, backend `interrupt_before` not wired |
-| Low | No conversation memory | `memory_enabled` field exists but runtime ignores it |
-| ✅ | Frontend test coverage | Added 2 page-level test files (SettingsPage, Dashboard) — now 33 tests in 9 files |
+| # | Item | Status | Detail |
+|---|------|--------|--------|
+| 1 | Fix in-memory event bus | ✅ Done | Removed `wait_for(timeout=300)` bug, WebSocket reconnection + 3s polling fallback |
+| 2 | Token cost tracking | ✅ Done | Parse `usageMetadata` from Gemini, 11-model pricing defaults, RunResponse token/cost fields, migration 0002 |
+| 3 | 5 new built-in tools | ✅ Done | current_time, random_number, text_analyzer, json_tool, url_info — all registered and frontend icons added |
+| 4 | Help/instruction buttons | ✅ Done | `?` popover on all 9 pages with contextual step-by-step guides |
+| 5 | Expand Settings + key security | ✅ Done | Cost defaults table, clear-all-keys endpoint, encryption transparency docs, Danger Zone with confirm dialogs |
+
+## Sprint 3 — Just Completed
+
+| # | Item | Status | Detail |
+|---|------|--------|--------|
+| 1 | Typography & Dark Mode | ✅ Done | Manrope font loaded, dark mode `--fg-primary: #f0f0f4`, letter-spacing, selection styling |
+| 2 | Expose 5 new tools in frontend | ✅ Done | Icon mappings for all 9 built-in tools (Clock, Dice6, AlignLeft, Braces, Link) |
+| 3 | Agent Templates | ✅ Done | DB model + migration 0003 + backend CRUD + 8 seeded defaults + frontend template chips |
+| 4 | Agent download/upload | ✅ Done | Per-card download, Export All, Import via JSON — backend GET/POST endpoints |
+| 5 | Tool download/upload | ✅ Done | Per-tool download, Export, Import via JSON — backend GET/POST endpoints |
+
+## Sprint 4 — Error Handling + Workflow Fixes + Tool Visibility (All Done ✅)
+
+| # | Item | Status | Detail |
+|---|------|--------|--------|
+| 1 | Global exception handler | ✅ Done | Catch-all returns clean JSON `{"detail": "..."}` instead of HTML 500 |
+| 2 | Fix workflow save + canvas + duplicate | ✅ Done | All 5 node types saved, canvas re-inits on switch, clean duplicate payload |
+| 3 | Fix NodeConfigPanel tools | ✅ Done | API-fetched all 9 built-in tools with toggle enable/disable |
+| 4 | Test Run on workflow page | ✅ Done | Inline test execution with results panel |
+| 5 | Frontend API error display | ✅ Done | 429 rate limit, 500 server error, non-JSON fallback handling |
+
+## Sprint 5 — Live Logs, Tool/Agent Testing, Runs Refresh
+
+| # | Item | Status | Detail |
+|---|------|--------|--------|
+| 1 | Fix live logs — emit agent events | 🔄 | compiler.py wrapper publishes agent_start/agent_end/tool_call events |
+| 2 | Built-in tool testing | 🔄 | Backend POST /tools/test-builtin + frontend Test button per tool |
+| 3 | Agent testing | 🔄 | Backend POST /agents/{id}/test + frontend test dialog |
+| 4 | Runs page refresh button | 🔄 | Add refresh button to re-fetch runs and events |
+
+## All Backlog Items Completed ✅
+
+| Priority | Item | Status | Notes |
+|----------|------|--------|-------|
+| Low | Schedule trigger | ✅ Done | APScheduler checks DB every 60s for `trigger.type: "schedule"` workflows and executes via `run_workflow` |
+| Low | Human-in-the-loop | ✅ Done | `human_node.py` with in-memory pending store, `POST /runs/{id}/human-response` + `GET /runs/{id}/human-request` endpoints, compiler handles `human` node type |
+| Low | Conversation memory | ✅ Done | In-memory `_conversation_store` dict, `agent_node.py` prepends history when `memory_enabled` is true, rolling window of last 10 exchanges |

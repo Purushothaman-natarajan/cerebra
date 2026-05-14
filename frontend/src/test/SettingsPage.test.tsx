@@ -1,4 +1,4 @@
-/** Tests for the SettingsPage — theme toggles, notification switches, danger zone. */
+/** Tests for the SettingsPage — theme toggles, notification switches, cost defaults, danger zone. */
 
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
@@ -24,7 +24,7 @@ describe("SettingsPage", () => {
   it("renders all sections", () => {
     renderWithProviders(<SettingsPage />)
     expect(screen.getByText("General")).toBeInTheDocument()
-    expect(screen.getByText("Execution Defaults")).toBeInTheDocument()
+    expect(screen.getByText("Cost Defaults (per 1M tokens, USD)")).toBeInTheDocument()
     expect(screen.getByText("Notifications")).toBeInTheDocument()
     expect(screen.getByText("Security")).toBeInTheDocument()
     expect(screen.getByText("Danger Zone")).toBeInTheDocument()
@@ -43,9 +43,10 @@ describe("SettingsPage", () => {
     expect(screen.getByText("Notify on run complete")).toBeInTheDocument()
   })
 
-  it("renders danger zone with export and reset", () => {
+  it("renders danger zone with clear keys, export and reset", () => {
     renderWithProviders(<SettingsPage />)
-    expect(screen.getByText("Export All Data")).toBeInTheDocument()
+    expect(screen.getByText("Clear All API Keys")).toBeInTheDocument()
+    expect(screen.getByText("Export / Import Settings")).toBeInTheDocument()
     expect(screen.getByText("Reset Platform")).toBeInTheDocument()
   })
 
@@ -55,10 +56,15 @@ describe("SettingsPage", () => {
     expect(input).toHaveValue("Cerebra-AI")
   })
 
-  it("renders execution default inputs", () => {
+  it("renders cost default model pricing table", () => {
     renderWithProviders(<SettingsPage />)
-    expect(screen.getByLabelText("Default Timeout (s)")).toHaveValue(60)
-    expect(screen.getByLabelText("Max Iterations")).toHaveValue(10)
-    expect(screen.getByLabelText("Token Budget")).toHaveValue(10000)
+    expect(screen.getByText("gemini-2.0-flash")).toBeInTheDocument()
+    expect(screen.getByText("gpt-4o")).toBeInTheDocument()
+  })
+
+  it("renders security encryption info", () => {
+    renderWithProviders(<SettingsPage />)
+    expect(screen.getByText(/Fernet/)).toBeInTheDocument()
+    expect(screen.getByText(/PBKDF2/)).toBeInTheDocument()
   })
 })

@@ -159,3 +159,10 @@ async def list_presets():
          "key_hint": v.get("key_hint", ""), "key_example": v.get("key_example", "")}
         for k, v in PRESETS.items()
     ]
+
+
+@router.post("/clear-keys", response_model=DeleteResponse)
+async def clear_all_provider_keys(db: AsyncSession = Depends(get_db)):
+    """Clear all provider API keys. Keys are permanently removed (set to empty string)."""
+    count = await provider_service.clear_all_keys(db)
+    return {"ok": True}

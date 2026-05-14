@@ -1,7 +1,8 @@
-"""Event bus — Redis pub/sub with in-memory fallback for when Redis is unavailable.
+"""Event bus — Redis pub/sub with in-memory fallback.
 
-Events are published to Redis (per-run channels) and streamed to WebSocket clients.
-When Redis is down, events are stored in-memory and served directly.
+Events are published to per-run channels and streamed to WebSocket clients.
+When Redis is down, events are stored in-memory and served via asyncio.Queue.
+Redis reconnection is attempted on each publish/subscribe call.
 """
 
 import asyncio
@@ -16,30 +17,29 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 _redis: aioredis.Redis | None = None
-
-# In-memory fallback: channel_name -> list of event dicts
 _memory_store: dict[str, list[dict]] = defaultdict(list)
-# In-memory subscribers: channel_name -> list of asyncio.Queue
 _memory_subs: dict[str, list[asyncio.Queue]] = defaultdict(list)
 
 
 async def get_redis() -> aioredis.Redis | None:
+    """Lazy-init Redis. Clears cached connection on failure so retry is possible."""
     global _redis
-    if _redis is None:
-        try:
+    try:
+        if _redis is None:
             url = settings.redis_url
             if settings.redis_password and ":@" not in url:
                 url = url.replace("redis://", f"redis://:{settings.redis_password}@")
             _redis = aioredis.from_url(url, decode_responses=True)
-            await _redis.ping()
-        except Exception as e:
-            logger.warning("Redis not available — using in-memory event bus: %s", e)
-            _redis = None
-    return _redis
+        await _redis.ping()
+        return _redis
+    except Exception as e:
+        logger.warning("Redis unavailable — using in-memory event bus: %s", e)
+        _redis = None
+        return None
 
 
 async def publish(channel: str, message: dict):
-    """Publish an event to a channel. Uses Redis if available, else in-memory."""
+    """Publish event to channel. Redis first, fall back to in-memory."""
     r = await get_redis()
     payload = json.dumps(message)
     if r is not None:
@@ -48,15 +48,15 @@ async def publish(channel: str, message: dict):
             return
         except Exception as e:
             logger.warning("Redis publish failed, falling back to memory: %s", e)
+            _redis = None
 
-    # In-memory fallback
     _memory_store[channel].append(message)
     for q in _memory_subs.get(channel, []):
         await q.put({"type": "message", "data": payload, "channel": channel})
 
 
 async def subscribe(channel: str):
-    """Subscribe to a channel. Returns an async iterator of messages."""
+    """Subscribe to channel. Returns Redis pubsub or in-memory _MemoryPubSub."""
     r = await get_redis()
     if r is not None:
         try:
@@ -65,20 +65,17 @@ async def subscribe(channel: str):
             return pubsub
         except Exception as e:
             logger.warning("Redis subscribe failed, falling back to memory: %s", e)
+            _redis = None
 
-    # In-memory fallback: return an async generator that yields stored + future events
     queue: asyncio.Queue = asyncio.Queue()
     _memory_subs[channel].append(queue)
-
-    # Replay past events from this run
     for event in _memory_store.get(channel, []):
         await queue.put({"type": "message", "data": json.dumps(event), "channel": channel})
-
     return _MemoryPubSub(channel, queue)
 
 
 class _MemoryPubSub:
-    """Async generator wrapper around an asyncio.Queue, mimics Redis pubsub."""
+    """In-memory pubsub using asyncio.Queue. Replaces Redis pubsub when unavailable."""
 
     def __init__(self, channel: str, queue: asyncio.Queue):
         self.channel = channel
@@ -86,11 +83,8 @@ class _MemoryPubSub:
 
     async def listen(self):
         while True:
-            try:
-                msg = await asyncio.wait_for(self._queue.get(), timeout=300)
-                yield msg
-            except asyncio.TimeoutError:
-                continue
+            msg = await self._queue.get()
+            yield msg
 
     async def unsubscribe(self):
         if self.channel in _memory_subs:

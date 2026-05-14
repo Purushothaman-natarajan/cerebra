@@ -184,12 +184,20 @@ class RunResponse(BaseModel):
         "status": "completed",
         "started_at": "2026-05-13T12:00:00+00:00",
         "finished_at": "2026-05-13T12:00:30+00:00",
+        "prompt_tokens": 150,
+        "completion_tokens": 300,
+        "total_tokens": 450,
+        "cost": 0.000135,
     })
     id: str = Field(description="Run UUID.")
     workflow_id: str = Field(description="Workflow UUID.")
     status: str = Field(description="pending | running | completed | failed.")
     started_at: str | None = Field(description="ISO-8601 start or null.")
     finished_at: str | None = Field(description="ISO-8601 end or null.")
+    prompt_tokens: int = Field(default=0, description="Total prompt tokens across all LLM calls.")
+    completion_tokens: int = Field(default=0, description="Total completion tokens across all LLM calls.")
+    total_tokens: int = Field(default=0, description="Total tokens used.")
+    cost: float = Field(default=0.0, description="Estimated USD cost.")
 
     @classmethod
     def from_orm(cls, run) -> "RunResponse":
@@ -197,6 +205,8 @@ class RunResponse(BaseModel):
             id=str(run.id), workflow_id=str(run.workflow_id), status=run.status,
             started_at=run.started_at.isoformat() if run.started_at else None,
             finished_at=run.finished_at.isoformat() if run.finished_at else None,
+            prompt_tokens=run.prompt_tokens, completion_tokens=run.completion_tokens,
+            total_tokens=run.total_tokens, cost=run.cost,
         )
 
 
@@ -399,6 +409,33 @@ class ToolTestResult(BaseModel):
     })
     ok: bool = Field(description="Whether the tool execution succeeded.")
     output: str = Field(description="Tool output text.")
+    duration_ms: int = Field(description="Execution time in milliseconds.")
+
+
+# ── Agent Test ──────────────────────────────────────────────────────
+
+class AgentTestCreate(BaseModel):
+    input: str = Field(default="", max_length=50000,
+        description="Input message to send to the agent.",
+        examples=["What are the latest trends in AI?"])
+
+
+class AgentTestResult(BaseModel):
+    model_config = _example({
+        "ok": True,
+        "output": "Here are the latest trends in AI...",
+        "prompt_tokens": 150,
+        "completion_tokens": 300,
+        "total_tokens": 450,
+        "cost": 0.000135,
+        "duration_ms": 1234,
+    })
+    ok: bool = Field(description="Whether the test succeeded.")
+    output: str = Field(description="Agent's response text.")
+    prompt_tokens: int = Field(default=0, description="Prompt tokens used.")
+    completion_tokens: int = Field(default=0, description="Completion tokens used.")
+    total_tokens: int = Field(default=0, description="Total tokens used.")
+    cost: float = Field(default=0.0, description="Estimated USD cost.")
     duration_ms: int = Field(description="Execution time in milliseconds.")
 
 

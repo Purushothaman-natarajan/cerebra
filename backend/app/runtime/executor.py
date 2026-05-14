@@ -1,6 +1,7 @@
 """Workflow executor — runs a compiled LangGraph graph with event streaming.
 
 Events are published to Redis (per-run channel) and optionally persisted to DB.
+Token usage and cost are extracted from the final state and persisted.
 """
 
 import uuid
@@ -50,6 +51,7 @@ async def run_workflow(
         "_agent_configs": agent_configs,
         "_router_conditions": {},
         "run_id": rid,
+        "_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost": 0.0},
     }
 
     event = {"run_id": rid, "type": "run_start", "timestamp": datetime.now(timezone.utc).isoformat(), "payload": {"input": input_message}}
@@ -64,9 +66,26 @@ async def run_workflow(
         await publish(f"run:events:{rid}", event)
         raise
 
-    event = {"run_id": rid, "type": "run_end", "timestamp": datetime.now(timezone.utc).isoformat(), "payload": {"messages": str(result.get("messages", []))}}
+    usage = result.get("_usage", {})
+    prompt_tokens = usage.get("prompt_tokens", 0)
+    completion_tokens = usage.get("completion_tokens", 0)
+    total_tokens = usage.get("total_tokens", 0)
+    cost = usage.get("cost", 0.0)
+
+    event = {
+        "run_id": rid, "type": "run_end",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "payload": {
+            "messages": str(result.get("messages", [])),
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "cost": round(cost, 6),
+        },
+    }
     await publish(f"run:events:{rid}", event)
     if db:
-        await run_service.add_run_event(db, rid, "run_end", "system", {"messages": str(result.get("messages", []))})
+        await run_service.add_run_event(db, rid, "run_end", "system", event["payload"])
+        await run_service.update_run_tokens(db, rid, prompt_tokens, completion_tokens, total_tokens, cost)
 
     return rid

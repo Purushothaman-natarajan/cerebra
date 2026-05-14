@@ -1,8 +1,9 @@
-/** Node config side panel — appears when a node is clicked on the canvas. */
+/** Node config side panel — appears when a node is clicked on the canvas. Fetches all tools from API. */
 
 import type { Node } from "reactflow"
 import { X, Bot, GitFork, UserCheck, LogOut, StickyNote } from "lucide-react"
 import { Input, Textarea, Select } from "@/components/ui"
+import { useAgentTools } from "@/api/tools"
 
 interface Props {
   node: Node | null
@@ -11,22 +12,16 @@ interface Props {
 }
 
 const nodeIcons: Record<string, typeof Bot> = {
-  agent: Bot,
-  router: GitFork,
-  human: UserCheck,
-  output: LogOut,
-  note: StickyNote,
+  agent: Bot, router: GitFork, human: UserCheck, output: LogOut, note: StickyNote,
 }
 
 const nodeColors: Record<string, string> = {
-  agent: "var(--accent)",
-  router: "#f59e0b",
-  human: "#8b5cf6",
-  output: "#10b981",
-  note: "#64748b",
+  agent: "var(--accent)", router: "#f59e0b", human: "#8b5cf6", output: "#10b981", note: "#64748b",
 }
 
 export default function NodeConfigPanel({ node, onClose, onUpdate }: Props) {
+  const { data: tools } = useAgentTools()
+
   if (!node) return null
 
   const Icon = nodeIcons[node.type as string] || Bot
@@ -61,30 +56,33 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }: Props) {
           <>
             <Textarea label="System Prompt" value={(d.system_prompt as string) || ""} onChange={(e) => update("system_prompt", e.target.value)} rows={4} placeholder="You are a helpful assistant..." />
             <Input label="Model" value={(d.model as string) || "gemini-2.0-flash"} onChange={(e) => update("model", e.target.value)} placeholder="gemini-2.0-flash" />
+            <Input label="Max Iterations" type="number" value={(d.max_iterations as number) ?? 10} onChange={(e) => update("max_iterations", Number(e.target.value))} min={1} />
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">Tools</label>
               <div className="flex flex-wrap gap-1.5">
-                {["web_search", "calculator", "http_request", "web_crawler"].map((t) => {
-                  const tools = (d.tools as string[]) || []
-                  const active = tools.includes(t)
+                {(tools || []).map((t) => {
+                  const active = ((d.tools as string[]) || []).includes(t.name)
                   return (
-                    <button key={t} onClick={() => update("tools", active ? tools.filter((x: string) => x !== t) : [...tools, t])}
+                    <button key={t.name} onClick={() => {
+                      const current = (d.tools as string[]) || []
+                      update("tools", active ? current.filter((x) => x !== t.name) : [...current, t.name])
+                    }}
                       className={`px-2.5 py-1 text-[11px] rounded-lg border transition-colors ${
                         active ? "text-white" : "border-border text-muted hover:bg-accent-soft"
                       }`}
                       style={active ? { background: "var(--accent)", borderColor: "var(--accent)" } : {}}
-                    >{t}</button>
+                      title={t.description}
+                    >{t.name}{t.is_builtin ? "" : " *"}</button>
                   )
                 })}
               </div>
+              <p className="text-[10px] text-muted mt-1">All 9 built-in tools available. Click to enable/disable.</p>
             </div>
           </>
         )}
 
         {node.type === "router" && (
-          <>
-            <p className="text-xs text-muted">Route based on conditions. Configure conditions in the workflow definition.</p>
-          </>
+          <p className="text-xs text-muted">Route based on conditions. Configure conditions in the workflow definition.</p>
         )}
 
         {node.type === "human" && (
@@ -107,9 +105,7 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }: Props) {
         )}
 
         {node.type === "note" && (
-          <>
-            <Textarea label="Note Content" value={(d.content as string) || ""} onChange={(e) => update("content", e.target.value)} rows={4} placeholder="Documentation for this workflow..." />
-          </>
+          <Textarea label="Note Content" value={(d.content as string) || ""} onChange={(e) => update("content", e.target.value)} rows={4} placeholder="Documentation for this workflow..." />
         )}
       </div>
     </div>

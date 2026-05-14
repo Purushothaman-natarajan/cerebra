@@ -1,11 +1,11 @@
-"""CRUD endpoints for AI agents."""
+"""CRUD endpoints for AI agents including export/import and testing."""
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.docs import list_response_example, response_example
-from app.schemas import AgentCreate, AgentResponse, AgentUpdate, DeleteResponse
+from app.schemas import AgentCreate, AgentResponse, AgentTestCreate, AgentTestResult, AgentUpdate, DeleteResponse
 from app.services import agent_service
 
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -70,3 +70,37 @@ async def delete_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
     if not deleted:
         raise HTTPException(404, "Agent not found")
     return {"ok": True}
+
+
+@router.get("/export", response_model=list[dict])
+async def export_agents(db: AsyncSession = Depends(get_db)):
+    """Export all agents as a JSON array. No input required."""
+    return await agent_service.export_agents(db)
+
+
+@router.post("/import", response_model=dict, status_code=201)
+async def import_agents(body: list[dict], db: AsyncSession = Depends(get_db)):
+    """Import agents from a JSON array. Each object must have name, role, system_prompt."""
+    count = await agent_service.import_agents(db, body)
+    return {"ok": True, "imported": count}
+
+
+_test_agent_example = {
+    "ok": True,
+    "output": "Here are the latest trends in AI...",
+    "prompt_tokens": 150,
+    "completion_tokens": 300,
+    "total_tokens": 450,
+    "cost": 0.000135,
+    "duration_ms": 1234,
+}
+
+
+@router.post("/{agent_id}/test", response_model=AgentTestResult,
+    responses={**response_example(_test_agent_example), **{404: {"description": "Agent not found"}}})
+async def test_agent(agent_id: str, body: AgentTestCreate, db: AsyncSession = Depends(get_db)):
+    """Test an agent with sample input. Returns the agent's response, token usage, cost, and timing."""
+    result = await agent_service.test_agent(db, agent_id, body.input)
+    if not result.get("ok") and result.get("output") == "Agent not found":
+        raise HTTPException(404, "Agent not found")
+    return result

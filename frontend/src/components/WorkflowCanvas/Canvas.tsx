@@ -51,8 +51,24 @@ function Flow({ initialNodes = [], initialEdges = [], onCanvasChange }: {
   const [edgeMenu, setEdgeMenu] = useState<{ edgeId: string; x: number; y: number; condition: string | null } | null>(null)
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
+  const onCanvasChangeRef = useRef(onCanvasChange)
+  onCanvasChangeRef.current = onCanvasChange
+  const initialRef = useRef({ nodes: initialNodes, edges: initialEdges })
 
-  useEffect(() => { onCanvasChange?.(nodes, edges) }, [nodes, edges, onCanvasChange])
+  // Sync canvas when selected workflow changes (switch between workflows) — only when reference changes
+  useEffect(() => {
+    if (initialRef.current.nodes !== initialNodes) {
+      setNodes(initialNodes)
+      initialRef.current.nodes = initialNodes
+    }
+    if (initialRef.current.edges !== initialEdges) {
+      setEdges(initialEdges)
+      initialRef.current.edges = initialEdges
+    }
+  }, [initialNodes, initialEdges, setNodes, setEdges])
+
+  // Report changes to parent — stable ref avoids infinite loop from inline callbacks
+  useEffect(() => { onCanvasChangeRef.current?.(nodes, edges) }, [nodes, edges])
 
   const handleNodesChange: OnNodesChange = useCallback((changes) => { onNodesChange(changes) }, [onNodesChange])
   const handleEdgesChange: OnEdgesChange = useCallback((changes) => { onEdgesChange(changes) }, [onEdgesChange])

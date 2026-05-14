@@ -1,4 +1,4 @@
-"""Custom tool management — built-in + user-defined tools."""
+"""Custom tool management — built-in + user-defined tools with export/import."""
 
 import uuid
 
@@ -9,8 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.docs import list_response_example, response_example
 from app.models.tool import CustomTool
-from app.runtime.tools.registry import get_tool_definitions
+from app.runtime.tools.registry import get_tool, get_tool_definitions
 from app.schemas import ToolCreate, ToolTest, ToolTestResult, DeleteResponse
+from app.services import tool_service
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 
@@ -112,6 +113,27 @@ async def test_tool(body: ToolTest, db: AsyncSession = Depends(get_db)):
         return {"ok": False, "output": f"Error: {e}", "duration_ms": elapsed}
 
 
+@router.post("/test-builtin", response_model=dict,
+    responses={**response_example({"ok": True, "output": "2026-05-14 12:00:00", "duration_ms": 12}),
+               **{400: {"description": "Tool not found or execution failed"}, 404: {"description": "Built-in tool not found"}}})
+async def test_builtin_tool(body: ToolTest, db: AsyncSession = Depends(get_db)):
+    """Test a built-in tool by name with sample input. Returns output and duration."""
+    import time
+
+    fn = get_tool(body.tool_id)
+    if not fn:
+        raise HTTPException(404, f"Built-in tool not found: {body.tool_id}")
+
+    start = time.monotonic()
+    try:
+        result = await fn(body.input)
+        elapsed = int((time.monotonic() - start) * 1000)
+        return {"ok": True, "output": str(result)[:5000], "duration_ms": elapsed}
+    except Exception as e:
+        elapsed = int((time.monotonic() - start) * 1000)
+        return {"ok": False, "output": f"Error: {e}", "duration_ms": elapsed}
+
+
 @router.delete("/{tool_id}", response_model=DeleteResponse,
     responses={**response_example({"ok": True}), **{404: {"description": "Tool not found"}}})
 async def delete_tool(tool_id: str, db: AsyncSession = Depends(get_db)):
@@ -123,3 +145,18 @@ async def delete_tool(tool_id: str, db: AsyncSession = Depends(get_db)):
     await db.delete(tool)
     await db.flush()
     return {"ok": True}
+
+
+@router.get("/export", response_model=list[dict])
+async def export_tools_endpoint(db: AsyncSession = Depends(get_db)):
+    """Export all custom tools as a JSON array. No input required."""
+    return await tool_service.export_tools(db)
+
+
+@router.post("/import", response_model=dict, status_code=201)
+async def import_tools_endpoint(body: list[dict], db: AsyncSession = Depends(get_db)):
+    """Import custom tools from a JSON array. Each object must have a name."""
+    count = await tool_service.import_tools(db, body)
+    return {"ok": True, "imported": count}
+
+

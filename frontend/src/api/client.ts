@@ -25,11 +25,17 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
       const body = await res.json()
       detail = body.detail || body.message || JSON.stringify(body)
     } catch {
-      detail = res.statusText
+      detail = res.statusText || `HTTP ${res.status}`
     }
 
     if (res.status === 401) {
       throw new Error("Authentication required. Set your API key in settings.")
+    }
+    if (res.status === 500) {
+      throw new Error(detail || `Server error (500). Check backend logs for details.`)
+    }
+    if (res.status === 429) {
+      throw new Error("Rate limit exceeded. Please wait before making more requests.")
     }
     throw new Error(detail || `Request failed (${res.status})`)
   }

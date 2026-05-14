@@ -66,3 +66,16 @@ async def get_decrypted_api_key(db: AsyncSession, provider_id: str) -> str | Non
     result = await db.execute(select(LLMProvider).where(LLMProvider.id == uuid.UUID(provider_id)))
     provider = result.scalar_one_or_none()
     return decrypt_value(provider.api_key) if provider and provider.api_key else None
+
+
+async def clear_all_keys(db: AsyncSession) -> int:
+    """Clear all provider API keys (set to empty string). Returns count of providers affected."""
+    result = await db.execute(select(LLMProvider))
+    providers = result.scalars().all()
+    count = 0
+    for p in providers:
+        if p.api_key:
+            p.api_key = ""
+            count += 1
+    await db.flush()
+    return count

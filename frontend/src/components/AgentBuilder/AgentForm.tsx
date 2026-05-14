@@ -20,7 +20,7 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
   const navigate = useNavigate()
 
   const [form, setForm] = useState<AgentFormData>(() => initial ?? {
-    name: "", role: "", system_prompt: "", model: "gemini-2.0-flash",
+    name: "", role: "", system_prompt: "", model: availableModels?.[0]?.model || "gemini-2.0-flash",
     tools: [], memory_enabled: false, max_iterations: 10,
     guardrails: { blocked_topics: [], max_tokens: 4096 },
   })
@@ -35,19 +35,15 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
     }))
   }
 
-  const filteredModels = useMemo(() => {
-    if (!selectedProvider || !availableModels) return availableModels || []
-    return availableModels.filter((m) => m.provider_id === selectedProvider)
-  }, [selectedProvider, availableModels])
-
   const modelOptions = useMemo(() => {
-    if (filteredModels.length === 0) {
-      return [{ value: "gemini-2.0-flash", label: "gemini-2.0-flash", group: "Default" }]
-    }
-    return filteredModels.map((m) => ({
+    if (!selectedProvider) return [{ value: "", label: "Select a provider first", group: "" }]
+    if (!availableModels || availableModels.length === 0) return [{ value: "", label: "No models available", group: "" }]
+    const filtered = availableModels.filter((m) => m.provider_id === selectedProvider)
+    if (filtered.length === 0) return [{ value: "", label: "No models for this provider", group: "" }]
+    return filtered.map((m) => ({
       value: m.model, label: m.model, group: m.provider_name,
     }))
-  }, [filteredModels])
+  }, [selectedProvider, availableModels])
 
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(form) }
 

@@ -1,4 +1,4 @@
-/** Workflows screen — canvas with template wizard, run config, workflow list cards. */
+/** Workflows screen — canvas with template wizard, test run, and run config. */
 
 import { useState, useCallback } from "react"
 import type { Node, Edge } from "reactflow"
@@ -7,9 +7,10 @@ import { useTemplates } from "@/api/templates"
 import type { Template } from "@/api/templates"
 import { useAgents } from "@/api/agents"
 import { useTriggerRun } from "@/api/runs"
+import type { Run } from "@/api/runs"
 import Canvas from "@/components/WorkflowCanvas/Canvas"
 import { Button, Card, Badge, Dialog, Textarea, Select, Input } from "@/components/ui"
-import { GitBranch, Play, Copy, Trash2, FileText } from "lucide-react"
+import { GitBranch, Play, Copy, Trash2, FileText, CheckCircle, XCircle, Loader2 } from "lucide-react"
 
 export default function WorkflowsPage() {
   const { data: workflows, isLoading } = useWorkflows()
@@ -29,6 +30,7 @@ export default function WorkflowsPage() {
   const [templateStep, setTemplateStep] = useState(0)
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
   const [runInput, setRunInput] = useState("")
+  const [testResult, setTestResult] = useState<{ run: Run; loading: boolean } | null>(null)
 
   const selectWorkflow = useCallback((id: string) => {
     setSelectedId(id)
@@ -42,7 +44,7 @@ export default function WorkflowsPage() {
 
   const handleSave = useCallback(() => {
     if (!selectedId) return
-    const nodes = canvasNodes.map((n) => ({ id: n.id, type: n.type as "agent" | "router", config: n.data }))
+    const nodes = canvasNodes.map((n) => ({ id: n.id, type: (n.type || "agent") as "agent" | "router" | "human" | "output" | "note", config: n.data }))
     const edges = canvasEdges.map((e) => ({ source: e.source, target: e.target, condition: e.data?.condition ?? null }))
     updateWorkflow.mutate({ id: selectedId, data: { name, nodes, edges } })
   }, [selectedId, canvasNodes, canvasEdges, name, updateWorkflow])
@@ -54,8 +56,24 @@ export default function WorkflowsPage() {
 
   const handleDuplicate = (id: string) => {
     const wf = workflows?.find((w) => w.id === id)
-    if (wf) createWorkflow.mutate({ ...wf, name: `${wf.name} (copy)` }, { onSuccess: (data) => selectWorkflow(data.id) })
+    if (wf) createWorkflow.mutate(
+      { name: `${wf.name} (copy)`, nodes: wf.nodes, edges: wf.edges, trigger: wf.trigger ?? { type: "manual", config: {} } },
+      { onSuccess: (data) => selectWorkflow(data.id) }
+    )
   }
+
+  const handleTestRun = useCallback(() => {
+    if (!selectedId) return
+    setTestResult({ run: { id: "", workflow_id: selectedId, status: "running", started_at: null, finished_at: null, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0 }, loading: true })
+    triggerRun.mutate(
+      { workflow_id: selectedId, input: "Test run" },
+      { onSuccess: (run) => setTestResult({ run, loading: false }), onError: () => setTestResult({ run: { id: "", workflow_id: selectedId, status: "failed", started_at: null, finished_at: null, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0 }, loading: false }) }
+    )
+  }, [selectedId, triggerRun])
+
+  const handleCanvasChange = useCallback((nodes: Node[], edges: Edge[]) => {
+    setCanvasNodes(nodes); setCanvasEdges(edges)
+  }, [])
 
   const handleRunNow = (id: string) => { setSelectedId(id); setShowRunConfig(true) }
 
@@ -115,10 +133,35 @@ export default function WorkflowsPage() {
             <div className="flex items-center gap-3 p-3 border-b border-border bg-card shrink-0">
               <Input value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
               <Button size="sm" variant="secondary" onClick={handleSave}>Save</Button>
+              <Button size="sm" variant="secondary" className="gap-1" onClick={handleTestRun}><Play className="w-3.5 h-3.5" /> Test</Button>
               <Button size="sm" onClick={() => handleRunNow(selectedId)}><Play className="w-3.5 h-3.5 mr-1" /> Run</Button>
             </div>
+            {testResult && (
+              <div className="shrink-0 border-b border-border bg-card/80 px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {testResult.loading ? (
+                      <Loader2 className="w-4 h-4 text-cyan-500 animate-spin" />
+                    ) : testResult.run.status === "completed" ? (
+                      <CheckCircle className="w-4 h-4 text-emerald-500" />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-rose-500" />
+                    )}
+                    <span className="text-sm font-medium text-foreground">
+                      {testResult.loading ? "Running..." : `Test ${testResult.run.status}`}
+                    </span>
+                    {testResult.run.total_tokens > 0 && (
+                      <span className="text-xs text-muted">
+                        {testResult.run.total_tokens} tok · ${testResult.run.cost.toFixed(6)}
+                      </span>
+                    )}
+                  </div>
+                  <button onClick={() => setTestResult(null)} className="text-xs text-muted hover:text-foreground">Dismiss</button>
+                </div>
+              </div>
+            )}
             <div className="flex-1">
-              <Canvas initialNodes={canvasNodes} initialEdges={canvasEdges} onCanvasChange={(nodes, edges) => { setCanvasNodes(nodes); setCanvasEdges(edges) }} />
+              <Canvas initialNodes={canvasNodes} initialEdges={canvasEdges} onCanvasChange={handleCanvasChange} />
             </div>
           </>
         ) : (
