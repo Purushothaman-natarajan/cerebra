@@ -1,20 +1,22 @@
-/** Root layout: full-screen sidebar + themed content with back nav and page animations. */
+/** Root layout: full-screen sidebar + themed content with lazy-loaded routes. */
 
-import { useState, type ReactNode } from "react"
+import { useState, lazy, Suspense, type ReactNode } from "react"
 import { Routes, Route, NavLink, useLocation, useNavigate } from "react-router-dom"
 import { Zap, Wrench, Bot, GitBranch, Radio, Activity, Settings, Menu, X, FileText, ArrowLeft, Shield } from "lucide-react"
 import { ThemeProvider } from "@/contexts/ThemeContext"
-import AgentsPage from "@/pages/AgentsPage"
-import WorkflowsPage from "@/pages/WorkflowsPage"
-import RunsPage from "@/pages/RunsPage"
-import ChannelsPage from "@/pages/ChannelsPage"
-import ProvidersPage from "@/pages/ProvidersPage"
-import ToolsPage from "@/pages/ToolsPage"
-import TemplatesPage from "@/pages/TemplatesPage"
-import SettingsPage from "@/pages/SettingsPage"
-import Dashboard from "@/pages/Dashboard"
 import ThemeToggle from "@/components/ui/ThemeToggle"
 import AccentPicker from "@/components/ui/AccentPicker"
+
+// Lazy-loaded pages — ReactFlow and Recharts chunks are loaded on demand
+const Dashboard = lazy(() => import("@/pages/Dashboard"))
+const AgentsPage = lazy(() => import("@/pages/AgentsPage"))
+const ChannelsPage = lazy(() => import("@/pages/ChannelsPage"))
+const ProvidersPage = lazy(() => import("@/pages/ProvidersPage"))
+const ToolsPage = lazy(() => import("@/pages/ToolsPage"))
+const TemplatesPage = lazy(() => import("@/pages/TemplatesPage"))
+const SettingsPage = lazy(() => import("@/pages/SettingsPage"))
+const WorkflowsPage = lazy(() => import("@/pages/WorkflowsPage"))
+const RunsPage = lazy(() => import("@/pages/RunsPage"))
 
 const navItems = [
   { to: "/providers", label: "Providers", icon: Zap },
@@ -51,9 +53,7 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
       <aside className={`${collapsed ? "-translate-x-full" : "translate-x-0"} fixed lg:sticky z-50 top-0 w-60 h-screen border-r border-border bg-card shrink-0 flex flex-col transition-all duration-300 ease-in-out`}>
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border">
           <span className="text-lg font-bold tracking-tight" style={{ color: "var(--accent)" }}>Cerebra‑AI</span>
-          <button onClick={onToggle} className="lg:hidden p-1.5 rounded-lg hover:bg-accent-soft transition-colors">
-            <X className="w-4 h-4" />
-          </button>
+          <button onClick={onToggle} className="lg:hidden p-1.5 rounded-lg hover:bg-accent-soft transition-colors"><X className="w-4 h-4" /></button>
         </div>
         <nav className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 space-y-0.5">
           {navItems.map((item) => {
@@ -64,10 +64,7 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
                   isActive ? "font-medium shadow-sm" : "hover:text-foreground hover:bg-accent-soft"
                 }`}
-                style={{
-                  color: isActive ? "var(--accent)" : "var(--fg-muted)",
-                  background: isActive ? "var(--accent-soft)" : "transparent",
-                }}
+                style={{ color: isActive ? "var(--accent)" : "var(--fg-muted)", background: isActive ? "var(--accent-soft)" : "transparent" }}
               >
                 <item.icon className="w-4 h-4 shrink-0" style={{ color: isActive ? "var(--accent)" : "var(--fg-muted)" }} />
                 <span className="flex-1">{item.label}</span>
@@ -77,8 +74,7 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
           })}
         </nav>
         <div className="p-4 sm:p-6 border-t border-border flex items-center justify-between">
-          <AccentPicker />
-          <ThemeToggle />
+          <AccentPicker /><ThemeToggle />
         </div>
       </aside>
     </>
@@ -99,6 +95,14 @@ function FullPage({ children }: { children: ReactNode }) {
   return <div className="flex-1 overflow-hidden min-h-0">{children}</div>
 }
 
+function Loading() {
+  return (
+    <div className="flex items-center justify-center h-full p-8">
+      <div className="w-6 h-6 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+    </div>
+  )
+}
+
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const location = useLocation()
@@ -108,34 +112,30 @@ function AppContent() {
     <div className="h-screen flex overflow-hidden" style={{ background: "var(--bg-primary)" }}>
       <Sidebar collapsed={!sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       <main className="flex-1 flex flex-col min-w-0" style={{ background: "var(--bg-secondary)" }}>
-        {/* Mobile header */}
         <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm shrink-0">
-          <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded-lg hover:bg-accent-soft transition-colors">
-            <Menu className="w-5 h-5" />
-          </button>
+          <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded-lg hover:bg-accent-soft transition-colors"><Menu className="w-5 h-5" /></button>
           <span className="text-sm font-bold tracking-tight" style={{ color: "var(--accent)" }}>Cerebra‑AI</span>
-          <div className="ml-auto flex items-center gap-1 text-[10px] text-muted">
-            <Shield className="w-3 h-3" />
-            <span>Encrypted</span>
-          </div>
+          <div className="ml-auto flex items-center gap-1 text-[10px] text-muted"><Shield className="w-3 h-3" /><span>Encrypted</span></div>
         </div>
-        {isFullLayout ? (
-          <Routes>
-            <Route path="/workflows" element={<FullPage><WorkflowsPage /></FullPage>} />
-            <Route path="/runs" element={<FullPage><RunsPage /></FullPage>} />
-            <Route path="*" element={null} />
-          </Routes>
-        ) : (
-          <Routes>
-            <Route path="/" element={<StandardPage><Dashboard /></StandardPage>} />
-            <Route path="/providers" element={<StandardPage><ProvidersPage /></StandardPage>} />
-            <Route path="/templates" element={<StandardPage><TemplatesPage /></StandardPage>} />
-            <Route path="/tools" element={<StandardPage><ToolsPage /></StandardPage>} />
-            <Route path="/agents" element={<StandardPage><AgentsPage /></StandardPage>} />
-            <Route path="/channels" element={<StandardPage><ChannelsPage /></StandardPage>} />
-            <Route path="/settings" element={<StandardPage><SettingsPage /></StandardPage>} />
-          </Routes>
-        )}
+        <Suspense fallback={<Loading />}>
+          {isFullLayout ? (
+            <Routes>
+              <Route path="/workflows" element={<FullPage><WorkflowsPage /></FullPage>} />
+              <Route path="/runs" element={<FullPage><RunsPage /></FullPage>} />
+              <Route path="*" element={null} />
+            </Routes>
+          ) : (
+            <Routes>
+              <Route path="/" element={<StandardPage><Dashboard /></StandardPage>} />
+              <Route path="/providers" element={<StandardPage><ProvidersPage /></StandardPage>} />
+              <Route path="/templates" element={<StandardPage><TemplatesPage /></StandardPage>} />
+              <Route path="/tools" element={<StandardPage><ToolsPage /></StandardPage>} />
+              <Route path="/agents" element={<StandardPage><AgentsPage /></StandardPage>} />
+              <Route path="/channels" element={<StandardPage><ChannelsPage /></StandardPage>} />
+              <Route path="/settings" element={<StandardPage><SettingsPage /></StandardPage>} />
+            </Routes>
+          )}
+        </Suspense>
       </main>
     </div>
   )

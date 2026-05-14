@@ -23,6 +23,19 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "react-router-dom"],
+          "reactflow-vendor": ["reactflow"],
+          "charts-vendor": ["recharts"],
+          "ui-vendor": ["lucide-react"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 400,
+  },
   test: {
     globals: true,
     environment: "jsdom",
