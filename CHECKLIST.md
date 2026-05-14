@@ -101,12 +101,16 @@ Tested with real Gemini API key against all 16 endpoints:
 | List Channels | ✅ |
 | Cleanup | ✅ |
 
-## Remaining Items
+## Remaining Items / Leftovers
 
 | Priority | Item | Status |
 |----------|------|--------|
-| Low | Frontend test framework (vitest) | ✅ Done — 23 tests |
-| Low | Initial Alembic migration | ✅ Done — `0001_initial_schema.py` |
-| Low | Fragile DuckDuckGo web_search | Improved with BeautifulSoup |
-| Low | Frontend `@/` path alias unused | ✅ Fixed — used throughout |
-| Low | Canvas stale closure | ✅ Fixed — useEffect instead of setTimeout |
+| Low | `llm.py` uses sync `generate_content()` — blocks event loop | Needs `aio` fix when SDK supports system_instruction and tools |
+| Low | `llm.py` tool calling disabled — SDK doesn't accept `tools` param | Prepended as user message instead |
+| Low | DuckDuckGo web_search uses undocumented lite endpoint (fragile) | Improved with BeautifulSoup. Replace with Tavily/SerpAPI |
+| Low | No schedule trigger — `trigger.type: "schedule"` in model but no APScheduler | Frontend displays it, backend doesn't implement |
+| Low | No human-in-the-loop — `HumanNode` frontend exists, `human_node.py` not implemented | Backend `interrupt_before` not wired |
+| Low | No conversation memory — `memory_enabled` field exists but runtime ignores it | Requires LangGraph checkpoint postgres |
+| Low | CI/CD GitHub Actions workflow triggers commented out | Uncomment `on:` block to activate |
+| Low | Frontend chunk size >500KB (recharts + reactflow) | Code-split with `dynamic import()` |
+| Low | Frontend test coverage — only 7 component files tested | Add page-level integration tests |
