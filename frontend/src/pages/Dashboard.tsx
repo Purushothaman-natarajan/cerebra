@@ -24,9 +24,33 @@ export default function Dashboard() {
     { icon: GitBranch, label: "Workflows", count: workflows?.length, color: "text-emerald-600", bg: "bg-emerald-100 dark:bg-emerald-900/30", link: "/workflows" },
   ]
 
+  const hasData = (providers?.length ?? 0) > 0 || (agents?.length ?? 0) > 0 || (workflows?.length ?? 0) > 0
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold text-foreground mb-6">🌸 Dashboard</h1>
+
+      {!hasData && (
+        <div className="mb-8 p-6 rounded-xl border border-accent bg-accent-soft/50">
+          <h2 className="text-lg font-semibold text-foreground mb-3">Welcome to Orchid 🌸</h2>
+          <p className="text-sm text-muted mb-4">Build your first multi-agent workflow in 5 steps:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+            {[
+              { step: 1, label: "Add a provider", desc: "Your LLM API key", icon: "⚡", link: "/providers" },
+              { step: 2, label: "Configure tools", desc: "What agents can do", icon: "🔧", link: "/tools" },
+              { step: 3, label: "Create agents", desc: "Who does the work", icon: "🤖", link: "/agents" },
+              { step: 4, label: "Build a workflow", desc: "How they collaborate", icon: "🔀", link: "/workflows" },
+              { step: 5, label: "Add a channel", desc: "Talk to your agents", icon: "📡", link: "/channels" },
+            ].map((s) => (
+              <button key={s.step} onClick={() => navigate(s.link)} className="p-3 rounded-lg border border-border bg-card hover:border-accent transition-colors text-left">
+                <span className="text-lg">{s.icon}</span>
+                <p className="text-sm font-medium text-foreground mt-1">{s.label}</p>
+                <p className="text-[10px] text-muted">{s.desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {stats.map((s) => (
