@@ -100,7 +100,7 @@ function FullPage({ children }: { children: ReactNode }) {
 }
 
 function AppContent() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const location = useLocation()
   const isFullLayout = ["/workflows", "/runs"].some((p) => location.pathname.startsWith(p) && location.pathname !== "/")
 
