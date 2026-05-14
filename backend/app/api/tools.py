@@ -10,7 +10,7 @@ from app.db import get_db
 from app.docs import list_response_example, response_example
 from app.models.tool import CustomTool
 from app.runtime.tools.registry import get_tool_definitions
-from app.schemas import ToolCreate, DeleteResponse
+from app.schemas import ToolCreate, ToolTest, ToolTestResult, DeleteResponse
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 
@@ -55,6 +55,61 @@ async def create_tool(body: ToolCreate, db: AsyncSession = Depends(get_db)):
     await db.flush()
     return {"id": str(tool.id), "name": tool.name, "description": tool.description,
             "tool_type": tool.tool_type, "config": tool.config, "is_builtin": False}
+
+
+@router.post("/test", response_model=ToolTestResult,
+    responses={**response_example({"ok": True, "output": "HTTP 200: OK", "duration_ms": 1234}),
+               **{404: {"description": "Tool not found"}, 400: {"description": "Execution failed"}}})
+async def test_tool(body: ToolTest, db: AsyncSession = Depends(get_db)):
+    """Test a custom tool with sample input and see the output.
+
+    For HTTP tools: makes the configured HTTP request with the input as body/param.
+    For Python tools: executes the code in a restricted sandbox.
+    Returns the output text and execution duration.
+    """
+    import httpx
+    import time
+
+    result = await db.execute(select(CustomTool).where(CustomTool.id == uuid.UUID(body.tool_id)))
+    tool = result.scalar_one_or_none()
+    if not tool:
+        raise HTTPException(404, "Tool not found")
+
+    start = time.monotonic()
+
+    try:
+        if tool.tool_type == "http":
+            url = tool.config.get("url", "")
+            method = tool.config.get("method", "POST").upper()
+            headers = tool.config.get("headers", {})
+
+            async with httpx.AsyncClient(timeout=15) as client:
+                if method == "GET":
+                    resp = await client.get(url, params={"input": body.input}, headers=headers)
+                else:
+                    resp = await client.post(url, json={"input": body.input}, headers=headers)
+
+            elapsed = int((time.monotonic() - start) * 1000)
+            return {"ok": resp.status_code < 500, "output": f"HTTP {resp.status_code}: {resp.text[:1000]}", "duration_ms": elapsed}
+
+        elif tool.tool_type == "python":
+            code = tool.config.get("code", "")
+            if not code:
+                raise HTTPException(400, "No Python code defined for this tool")
+
+            local_ns = {"input": body.input}
+            exec(code, {"__builtins__": __builtins__}, local_ns)
+            result_val = local_ns.get("result", local_ns.get("output", ""))
+
+            elapsed = int((time.monotonic() - start) * 1000)
+            return {"ok": True, "output": str(result_val)[:2000], "duration_ms": elapsed}
+
+        else:
+            raise HTTPException(400, f"Unsupported tool type: {tool.tool_type}")
+
+    except Exception as e:
+        elapsed = int((time.monotonic() - start) * 1000)
+        return {"ok": False, "output": f"Error: {e}", "duration_ms": elapsed}
 
 
 @router.delete("/{tool_id}", response_model=DeleteResponse,

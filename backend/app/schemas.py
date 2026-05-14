@@ -383,6 +383,25 @@ class ChannelResponse(BaseModel):
     created_at: str = Field(description="ISO-8601 timestamp.")
 
 
+class ToolTest(BaseModel):
+    """Request to test a tool with sample input."""
+    tool_id: str = Field(..., description="UUID of the tool to test.",
+        examples=["550e8400-e29b-41d4-a716-446655440004"])
+    input: str = Field(default="", description="Sample input to pass to the tool.",
+        examples=["Hello from Cerebra!"])
+
+
+class ToolTestResult(BaseModel):
+    model_config = _example({
+        "ok": True,
+        "output": "HTTP 200: OK",
+        "duration_ms": 1234,
+    })
+    ok: bool = Field(description="Whether the tool execution succeeded.")
+    output: str = Field(description="Tool output text.")
+    duration_ms: int = Field(description="Execution time in milliseconds.")
+
+
 # ── Generic ──────────────────────────────────────────────────────
 
 class DeleteResponse(BaseModel):
