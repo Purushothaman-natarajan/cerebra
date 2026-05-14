@@ -1,6 +1,6 @@
-# Orchid — Project Roadmap
+# Cerebra — Project Roadmap
 
-> AI Agent Orchestration Platform · Yuno AI Hiring Challenge · Purushothaman
+> AI Agent Orchestration Platform.
 
 ---
 
@@ -15,91 +15,77 @@ Build a production-grade, locally-runnable platform where:
 
 ---
 
-## Design Philosophy (UX)
-
-- **Progressive disclosure** — simple things are simple; complex things are possible
-- **Build once, reuse everywhere** — LLM configs, tools, agents are assets, not one-offs
-- **Visible state at all times** — user always knows what's running, what failed, why
-- **Zero dead ends** — every empty state has a next action; every error has a recovery path
-
----
-
-## Build Phases
+## Build Phases — All Complete
 
 ### Phase 0 — Scaffold
-- [x] Init repo, `docker-compose.yml` (postgres, redis, backend, frontend)
-- [x] FastAPI skeleton with health check
-- [x] Alembic init + base migration config
+- [x] Docker Compose (postgres, redis, backend, frontend)
+- [x] FastAPI skeleton + health check
+- [x] Alembic config + initial migration
 - [x] React + Vite + Tailwind scaffold
-- [x] `.env.example`, `Makefile`
+- [x] `.env.example`, `Makefile`, run scripts
 
 ### Phase 1 — Agent CRUD + Runtime Core
-- [x] SQLAlchemy models: Agent, WorkflowDef, Run, RunEvent, Channel
-- [x] `/agents` CRUD endpoints + service
-- [x] Tool registry (web_search, calculator, http_request)
-- [x] `compiler.py` — WorkflowDef JSON → LangGraph CompiledGraph
-- [x] `executor.py` — run graph, emit RunEvent to Redis
-- [x] `agent_node.py` — LLM + tool call loop with guardrails
-- [x] **Tests**: agent CRUD, workflow compile, single-agent run
+- [x] 8 SQLAlchemy models
+- [x] Full CRUD for agents, workflows, runs
+- [x] Tool registry (web_search, calculator, http_request, web_crawler)
+- [x] LangGraph compiler + executor
+- [x] Agent node with guardrails
 
 ### Phase 2 — Multi-Agent & Async Messaging
-- [x] Redis pub/sub bus (`bus.py`)
-- [x] `router_node.py` — keyword-based condition evaluation
-- [x] Inter-agent message passing through shared LangGraph state
-- [x] `/runs` endpoints — trigger, status, event history
-- [x] WebSocket endpoint `/ws/runs/{run_id}`
-- [x] **Tests**: 2-agent workflow, router decision
+- [x] Redis pub/sub bus
+- [x] Router node (keyword-based conditions)
+- [x] WebSocket log streaming
+- [x] Per-run event channels
 
-### Phase 3 — Frontend (Initial)
-- [x] AgentsPage — list, create, edit agents
-- [x] WorkflowCanvas — ReactFlow canvas with AgentNode + RouterNode
+### Phase 3 — Frontend
+- [x] 9 pages: Dashboard, Providers, Templates, Tools, Agents, Workflows, Runs, Channels, Settings
+- [x] ReactFlow canvas with 5 node types
 - [x] Edge condition editor
-- [x] WorkflowsPage — save/load workflow JSON
-- [x] MonitorPanel — LiveLogs (WebSocket), MessageTrace
-- [x] RunsPage — run history table
+- [x] Monitor panel with live logs
 
-### Phase 4 — Telegram + Channel Integration
-- [x] `TelegramChannel` class — webhook receive, reply
-- [x] `/channels` CRUD endpoints
-- [x] Bind channel trigger to workflow start
-- [x] Message history persisted to DB
+### Phase 4 — Telegram Integration
+- [x] Telegram webhook handler
+- [x] Channel CRUD
+- [x] Message history
+- [x] 3-step bot setup wizard
 
-### Phase 5 — Templates, Polish & Demo
-- [x] Implement `research_and_report.json`, `support_triage.json`, `web_research_agent.json`
-- [x] Token + cost tracking placeholder
-- [x] README: architecture, setup, tech choices
-- [ ] Record demo video / GIF
+### Phase 5 — Templates & Polish
+- [x] 4 pre-built workflow templates
+- [x] Template import with history
+- [x] Token/cost tracking in run detail
+- [x] Comprehensive READMEs
 
 ### Phase 6 — Security Hardening
-- [x] **Safe eval**: AST-based calculator (no `eval()`)
-- [x] **SSRF protection**: Private IP blocklist + async DNS resolution
-- [x] **CORS**: Configurable origins
-- [x] **Auth**: Bearer token middleware + WS token param
-- [x] **Encryption**: Fernet encryption for provider API keys
-- [x] **Rate limiting**: In-memory sliding window (10/min runs, 100/min other)
-- [x] **Input validation**: Pydantic Field limits, 5MB body middleware
-- [x] **nginx headers**: X-Frame-Options, X-Content-Type-Options, Referrer-Policy
-- [x] **Error sanitization**: Generic error messages to LLM (no stack leaks)
-- [x] **Redis password**: Support via REDIS_PASSWORD env var
-- [x] **WebSocket origin**: Origin header validation
-- [x] **Git hygiene**: `.gitignore` expanded, `.dockerignore` for both projects
+- [x] Safe eval (AST), SSRF protection, CORS
+- [x] Bearer token auth, Fernet encryption
+- [x] Rate limiting, input validation
+- [x] nginx security headers, Redis password
+- [x] WebSocket origin, sanitized errors
 
-### Phase 7 — Orchid UX Redesign
-- [x] App shell: rename to Orchid, reorder sidebar, responsive hamburger menu
-- [x] Theme: light/dark/system toggle, 6 accent colors, CSS variable system
-- [x] Component kit: Button, Input, Card, Badge, Dialog, Toast, Skeleton, Empty
-- [x] **Providers**: Cards with model list, masked key, Verified badge, Test Connection
-- [x] **Tools**: Grid layout with icons, "Create custom tool" card, 3 creation paths
-- [x] **Agents**: Emoji avatars, redesigned cards with role + memory + model
-- [x] **Workflows**: List cards with run/duplicate/delete, template 3-step wizard
-- [x] **Channels**: 3-step Telegram wizard (create bot, configure webhook, route)
-- [x] **Runs**: Filterable list, detail view with timeline + log + events + cost
-- [x] **Settings**: General, Execution, Notifications, Danger zone
-- [x] Onboarding banner (5-step setup when no data exists)
-- [x] Empty states, error boundaries, toast notifications
-- [x] Dead code removed: TokenChart, useRunStore
+### Phase 7 — UI Redesign & Polish
+- [x] Rename to Cerebra, responsive sidebar
+- [x] Theme system: light/dark/system, 6 accent colors
+- [x] 14-component design system
+- [x] Loading skeletons, error states, empty states, error boundaries
+- [x] Toast notifications, keyboard shortcuts
 
----
+### Phase 8 — Agent Builder Features
+- [x] Node config side panel
+- [x] Human Gate, Output, Note node types
+- [x] Tool testing dialog
+- [x] Provider + Model selector in agent form
+
+### Phase 9 — API Documentation
+- [x] Every field has `description` + `examples`
+- [x] All `body: dict` replaced with typed schemas
+- [x] `response_model` on all endpoints
+- [x] OpenAPI schema patch for Swagger pre-fill
+
+### Phase 10 — Testing & CI
+- [x] 34 backend unit tests
+- [x] 23 frontend component tests
+- [x] 16 E2E API tests with real Gemini
+- [x] GitHub Actions workflow (commented out)
 
 ## Tech Stack
 
@@ -108,23 +94,18 @@ Build a production-grade, locally-runnable platform where:
 | **Backend** | Python / FastAPI | Async-native for concurrent LLM calls, auto OpenAPI docs |
 | **AI Runtime** | LangGraph | Graph = semantic match to visual workflows with conditionals |
 | **LLM** | Gemini (swappable) | Provider system: OpenAI, Anthropic, Ollama, OpenRouter |
-| **Database** | PostgreSQL + SQLite (dev) | JSON columns for flexible node/edge/tool definitions |
-| **Messaging** | Redis pub/sub | Lightweight event streaming to WebSocket clients |
+| **Database** | PostgreSQL + SQLite (dev) | JSON columns for flexible definitions |
+| **Messaging** | Redis pub/sub | Lightweight event streaming to WebSocket |
 | **Frontend** | React 19 + TypeScript | Zustand, TanStack Query, ReactFlow, Tailwind |
+| **Encryption** | Fernet (PBKDF2) | Provider API keys encrypted at rest |
 | **Infra** | Docker Compose | Single command boot |
 
-## Site Navigation (UX)
+## Site Navigation
 
 ```
-🌸 Orchid
-─────────────
-⚡ Providers       ← Step 1: your LLM keys
-🔧 Tools           ← Step 2: what agents can do
-🤖 Agents          ← Step 3: who does the work
-🔀 Workflows       ← Step 4: how they collaborate
-📡 Channels        ← Step 5: how the outside world talks in
-▶️ Runs            ← Live + history
-⚙️ Settings
+Cerebra
+⚡ Providers → 📋 Templates → 🔧 Tools → 🤖 Agents
+→ 🔀 Workflows → 📡 Channels → ▶️ Runs → ⚙️ Settings
 ```
 
-The sidebar order **is the onboarding order**. First-time users see a 5-step setup banner on the Dashboard.
+The sidebar order is the onboarding order. First-time users see a 5-step setup guide on the Dashboard.

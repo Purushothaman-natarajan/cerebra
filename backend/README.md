@@ -1,44 +1,51 @@
 # Cerebra — Backend
 
-AI Agent Orchestration Platform backend. FastAPI + LangGraph + Gemini.
+AI Agent Orchestration Platform backend. FastAPI + LangGraph + Gemini (swappable).
 
 ## Tech Stack & Reasoning
 
 | Layer | Choice | Why |
 |-------|--------|-----|
-| **Framework** | FastAPI (async) | Native async for concurrent LLM calls, auto OpenAPI docs, Pydantic validation |
-| **AI Runtime** | LangGraph | Graph-based execution is a direct semantic match to visual workflow builders with conditional branching and feedback loops. `StateGraph` provides checkpointing, `interrupt_before/after` enables human-in-the-loop, each node is a plain testable function |
-| **LLM** | Google Gemini | No API key billing surprises for dev, `google-genai` SDK has clean async support. Provider system allows swapping to OpenAI/Anthropic/local via config |
-| **Database** | PostgreSQL | JSON columns for flexible node/edge/tool definitions, `asyncpg` driver for non-blocking queries |
-| **Messaging** | Redis | Lightweight pub/sub for streaming run events to WebSocket clients. No persistent message broker needed |
-| **Encryption** | Fernet (cryptography) | PBKDF2-derived key from `ENCRYPTION_KEY` env var for encrypting provider API keys at rest |
-| **Auth** | Bearer token | Configurable via `CEREBRA_API_KEY`. Disabled when empty for local dev |
+| **Framework** | FastAPI (async) | Native async for concurrent LLM calls, auto OpenAPI docs with examples |
+| **AI Runtime** | LangGraph | Graph execution matches visual workflow builder with conditional branching |
+| **LLM** | Google Gemini (swappable) | Provider system: OpenAI, Anthropic, Ollama, OpenRouter via config |
+| **Database** | PostgreSQL + SQLite (dev) | JSON columns for flexible node/edge/tool definitions |
+| **Messaging** | Redis pub/sub | Lightweight event streaming to WebSocket clients |
+| **Encryption** | Fernet (cryptography) | PBKDF2-derived key from ENCRYPTION_KEY for provider API keys |
+| **Auth** | Bearer token | Configurable via CEREBRA_API_KEY. Disabled when empty |
 
-## Current Architecture
+## Project Structure
 
 ```
-Request → Auth Middleware → FastAPI Router → Service Layer → LangGraph Runtime
-                    │                            │
-                    ↓                            ↓
-              PostgreSQL                      Redis pub/sub
-                                                    │
-                                          WebSocket → Frontend
+backend/
+├── app/
+│   ├── api/           # 8 modules: agents, workflows, runs, templates, providers, tools, channels, ws
+│   ├── models/        # 8 ORM models
+│   ├── services/      # Business logic (agent, workflow, run, provider)
+│   ├── runtime/       # LangGraph compiler, executor, LLM client, agent/router nodes, tool registry
+│   └── app/
+│       ├── auth.py        # Bearer token middleware + WS auth
+│       ├── security.py    # Fernet encryption for API keys
+│       ├── bus.py         # Redis pub/sub (graceful degradation)
+│       ├── ratelimit.py   # In-memory rate limiter + request size check
+│       ├── openapi_patch.py # Auto-adds singular examples to Swagger
+│       └── docs.py        # Response example helpers for Swagger
+├── tests/             # 38 tests (34 pass, 4 skip without API key)
+├── Dockerfile         # Python 3.12-slim, no --reload in prod
+└── requirements.txt   # pip / uv dependencies
 ```
-
-- **Every request** (except `/health`, `/docs`, `/webhook`) is authenticated via `Authorization: Bearer` if `CEREBRA_API_KEY` is set
-- **Provider API keys** are encrypted at rest with Fernet symmetric encryption
-- **Tool calls** from the LLM are protected: `http_request` resolves DNS to block SSRF, `calculator` uses AST-based safe eval
-- **Error messages** returned to the LLM are sanitized (no internal details leaked)
 
 ## API Endpoints
+
+All endpoints have typed Pydantic schemas with examples, response models, and error codes documented in Swagger (`/docs`).
 
 ### Agents
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/agents` | List all agents |
 | POST | `/agents` | Create agent (name, role, system_prompt, model, tools, guardrails) |
-| GET | `/agents/{id}` | Get agent |
-| PATCH | `/agents/{id}` | Update agent |
+| GET | `/agents/{id}` | Get agent by UUID |
+| PATCH | `/agents/{id}` | Partial update |
 | DELETE | `/agents/{id}` | Delete agent |
 
 ### Workflows
@@ -62,22 +69,25 @@ Request → Auth Middleware → FastAPI Router → Service Layer → LangGraph R
 ### Templates
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/templates` | List pre-built workflow templates |
+| GET | `/templates` | List pre-built workflow templates (60s cache) |
 
 ### Providers
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/providers` | List LLM providers |
+| GET | `/providers` | List LLM providers (keys masked) |
 | POST | `/providers` | Add provider (with preset: openai/gemini/anthropic/ollama/openrouter) |
+| PATCH | `/providers/{id}` | Update provider |
 | DELETE | `/providers/{id}` | Remove provider |
+| POST | `/providers/test` | Test connection with real API call |
 | GET | `/providers/models` | All models from active providers |
-| GET | `/providers/presets` | Provider preset list |
+| GET | `/providers/presets` | Provider presets with key format hints |
 
 ### Tools
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/tools` | List all tools (built-in + custom) |
 | POST | `/tools` | Create custom tool (HTTP/Python/Webhook) |
+| POST | `/tools/test` | Test tool with sample input |
 | DELETE | `/tools/{id}` | Delete custom tool |
 
 ### Channels
@@ -90,62 +100,39 @@ Request → Auth Middleware → FastAPI Router → Service Layer → LangGraph R
 ### System
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | Health check |
-
-## Project Structure
-
-```
-backend/
-├── app/
-│   ├── api/           # Route handlers (8 modules: agents, workflows, runs, templates, providers, tools, channels, ws)
-│   ├── models/        # SQLAlchemy ORM models (7 models)
-│   ├── services/      # Business logic layer (4 modules)
-│   ├── runtime/       # LangGraph compiler, executor, LLM client, nodes, tool registry
-│   │   ├── nodes/     # agent_node.py, router_node.py
-│   │   └── tools/     # registry.py + calculator, web_search, web_crawler, http_request
-│   ├── channels/      # AbstractChannel + TelegramChannel
-│   ├── auth.py        # Bearer token middleware + WS auth
-│   ├── security.py    # Fernet encryption for API keys
-│   ├── bus.py         # Redis pub/sub wrapper
-│   ├── config.py      # Pydantic settings from .env
-│   ├── db.py          # Async SQLAlchemy engine + session
-│   ├── schemas.py     # Pydantic request/response schemas
-│   └── main.py        # FastAPI entry point
-├── tests/             # pytest suite (15 tests, 4 skip without API key)
-├── Dockerfile         # Python 3.12-slim, no --reload in prod
-├── requirements.txt   # pip dependencies
-└── pyproject.toml     # uv dependency manifest
-```
+| GET | `/health` | Health check (public, no auth) |
 
 ## Security
 
-- **Authentication**: All API routes require `Authorization: Bearer <key>` if `CEREBRA_API_KEY` is set. WebSocket uses `?token=` param. Public paths: `/health`, `/docs`, `/channels/webhook/telegram`.
-- **Encryption at rest**: Provider API keys are encrypted with `cryptography.fernet` (PBKDF2-SHA256, 600K iterations). Keys are masked in API responses (`sk-...abcd`).
-- **SSRF protection**: `http_request` tool resolves DNS to IP before checking against private network blocklist (127.0.0.0/8, 10.0.0.0/8, etc.). Hostnames resolving to private IPs are rejected.
-- **Safe eval**: Calculator uses AST-based expression parser allowing only arithmetic operators. No `eval()`.
-- **CORS**: Configurable via `CORS_ORIGINS` env var (default: localhost:5173).
-- **Sanitized errors**: Tool error messages returned to the LLM are generic — no stack traces or internal details leaked.
+- **Auth**: All routes require `Authorization: Bearer <key>` if `CEREBRA_API_KEY` is set. Public: `/health`, `/docs`, `/webhook`.
+- **Encryption at rest**: Provider API keys encrypted with `cryptography.fernet` (PBKDF2-SHA256, 600K iterations). Masked in responses.
+- **SSRF protection**: `http_request` tool resolves DNS to IP before checking against private network blocklist.
+- **Safe eval**: AST-based calculator parser — no `eval()`.
+- **Rate limiting**: In-memory sliding window — 10/min on /runs, 100/min on other endpoints.
+- **Request size limit**: 5MB max body via middleware.
+- **WebSocket origin**: Origin header validation against known hosts.
+- **CORS**: Configurable via `CORS_ORIGINS` env var.
+- **Sanitized errors**: Generic error messages to LLM — no stack traces leaked.
 
 ## Configuration
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GEMINI_API_KEY` | No* | — | Google Gemini API key (required to run workflows) |
-| `DATABASE_URL` | No | postgresql+asyncpg://postgres:postgres@localhost:5432/cerebra | Postgres connection |
+| `GEMINI_API_KEY` | No* | — | Gemini key (required to run workflows) |
+| `DATABASE_URL` | No | postgresql+asyncpg://postgres:postgres@localhost:5432/cerebra | Postgres (use sqlite+aiosqlite for dev) |
 | `REDIS_URL` | No | redis://localhost:6379/0 | Redis connection |
 | `CEREBRA_API_KEY` | No | — | API key for auth (empty = no auth) |
-| `ENCRYPTION_KEY` | No | — | Key for encrypting provider API keys |
-| `CORS_ORIGINS` | No | http://localhost:5173,http://localhost:8000 | Allowed CORS origins |
-| `TELEGRAM_BOT_TOKEN` | No | — | Telegram bot token |
-| `TELEGRAM_WEBHOOK_URL` | No | — | Telegram webhook URL |
-| `DB_POOL_SIZE` | No | 5 | asyncpg connection pool size |
-| `DB_MAX_OVERFLOW` | No | 10 | asyncpg max overflow connections |
+| `ENCRYPTION_KEY` | No | — | Fernet key for encrypting provider API keys |
+| `CORS_ORIGINS` | No | http://localhost:5173 | Allowed CORS origins |
+| `REDIS_PASSWORD` | No | — | Redis auth password |
 
 ## Testing
 
 ```bash
 cd backend
-python -m pytest tests/ -v
+python -m pytest tests/ -v            # 34 pass
+python test_all_endpoints.py          # 24/24 endpoint tests pass
+python e2e_test.py                    # 16/16 E2E tests with real Gemini API
 ```
 
-Tests use SQLite (aiosqlite), no Postgres needed. Redis failures are caught gracefully. Gemini-dependent tests auto-skip when `GEMINI_API_KEY` is unset.
+Tests use SQLite (aiosqlite), no Postgres needed. Redis failures are caught gracefully.
