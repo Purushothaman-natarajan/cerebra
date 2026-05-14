@@ -2,11 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react"
 import type { AgentFormData } from "@/api/agents"
-import { useAvailableModels } from "@/api/providers"
-import { useProviders } from "@/api/providers"
+import { useAvailableModels, useProviders } from "@/api/providers"
 import { useAgentTools } from "@/api/tools"
 import { Button, Input, Textarea, Select } from "@/components/ui"
-import { useNavigate } from "react-router-dom"
 
 interface Props {
   initial?: AgentFormData
@@ -18,7 +16,6 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
   const { data: providers } = useProviders()
   const { data: availableModels } = useAvailableModels()
   const { data: agentTools } = useAgentTools()
-  const navigate = useNavigate()
 
   const [form, setForm] = useState<AgentFormData>({
     name: "", role: "", system_prompt: "", model: "gemini-2.0-flash",
@@ -30,7 +27,6 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
   useEffect(() => {
     if (initial) {
       setForm(initial)
-      // Try to find which provider this model belongs to
       const modelInfo = availableModels?.find((m) => m.model === initial.model)
       if (modelInfo) setSelectedProvider(modelInfo.provider_id)
     }
@@ -45,38 +41,21 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
     }))
   }
 
-  // Filter models by selected provider
   const filteredModels = useMemo(() => {
     if (!selectedProvider || !availableModels) return availableModels || []
     return availableModels.filter((m) => m.provider_id === selectedProvider)
   }, [selectedProvider, availableModels])
 
-  // Build option groups for model dropdown
   const modelOptions = useMemo(() => {
     if (filteredModels.length === 0) {
-      // Show default if no models available
       return [{ value: "gemini-2.0-flash", label: "gemini-2.0-flash", group: "Default" }]
     }
     return filteredModels.map((m) => ({
-      value: m.model,
-      label: m.model,
-      group: m.provider_name,
+      value: m.model, label: m.model, group: m.provider_name,
     }))
   }, [filteredModels])
 
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(form) }
-
-  // Show empty state if no providers configured
-  if (!providers || providers.length === 0) {
-    return (
-      <div className="space-y-4 p-6 rounded-xl border border-border bg-card text-center">
-        <p className="text-muted">No LLM providers configured yet.</p>
-        <p className="text-sm text-muted mb-4">Add a provider (OpenAI, Gemini, Ollama, etc.) before creating agents.</p>
-        <Button onClick={() => navigate("/providers")}>Add Provider</Button>
-        <Button variant="ghost" size="sm" onClick={onCancel} className="ml-2">Cancel</Button>
-      </div>
-    )
-  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-6 rounded-xl border border-border bg-card">
