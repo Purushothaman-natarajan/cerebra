@@ -16,6 +16,7 @@ from app.api import agents, channels, providers, runs, templates, tools, workflo
 from app.auth import verify_api_key
 from app.config import settings
 from app.db import Base, engine
+from app.openapi_patch import patch_openapi_schema
 from app.ratelimit import limit_middleware
 
 
@@ -65,3 +66,19 @@ app.include_router(ws.router)
 async def health():
     """Health check endpoint. Returns {"status": "ok"} when the app is running."""
     return {"status": "ok"}
+
+
+# Patch OpenAPI schema to add singular `example` from `examples` arrays.
+# Swagger pre-populates "Try it out" from `example`, but Pydantic v2's
+# Field(examples=[...]) only generates the plural form.
+_original_openapi = app.openapi
+
+
+def _patched_openapi():
+    schema = _original_openapi()
+    if schema:
+        patch_openapi_schema(schema)
+    return schema
+
+
+app.openapi = _patched_openapi

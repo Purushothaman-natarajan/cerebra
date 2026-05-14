@@ -6,6 +6,22 @@ Every model has:
 """
 
 from pydantic import BaseModel, ConfigDict, Field
+from typing import Any
+
+
+def ExField(*, example: Any, **kwargs: Any) -> Any:
+    """Field wrapper that sets both `examples` (plural, OpenAPI) AND `example` (singular, Swagger pre-fill).
+
+    Swagger UI pre-populates "Try it out" request bodies from the singular `example` field.
+    Pydantic v2's `Field(examples=[...])` only sets the plural form which Swagger ignores for pre-fill.
+    """
+    if "json_schema_extra" not in kwargs:
+        kwargs["json_schema_extra"] = {}
+    if isinstance(kwargs["json_schema_extra"], dict):
+        kwargs["json_schema_extra"]["example"] = example
+    if "examples" not in kwargs:
+        kwargs["examples"] = [example]
+    return Field(**kwargs)
 
 
 def _example(obj):
@@ -32,11 +48,14 @@ class AgentCreate(BaseModel):
         description="Tool names this agent can use.",
         examples=[["web_search", "calculator"]])
     channel_id: str | None = Field(default=None,
-        description="Optional channel UUID to bind this agent.")
+        description="Optional channel UUID to bind this agent.",
+        examples=[None])
     memory_enabled: bool = Field(default=False,
-        description="When true, persists conversation history across runs.")
+        description="When true, persists conversation history across runs.",
+        examples=[False])
     max_iterations: int = Field(default=10, ge=1, le=100,
-        description="Maximum LLM+tool call cycles before forced response.")
+        description="Maximum LLM+tool call cycles before forced response.",
+        examples=[10])
     guardrails: dict = Field(default={},
         description="Safety constraints: blocked_topics, max_tokens.",
         examples=[{"blocked_topics": ["politics"], "max_tokens": 4096}])
