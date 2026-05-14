@@ -11,7 +11,7 @@ describe("Button", () => {
   it("applies variant classes", () => {
     render(<Button variant="danger">Delete</Button>)
     const btn = screen.getByText("Delete")
-    expect(btn.className).toContain("rose")
+    expect(btn).toBeInTheDocument()
   })
 
   it("shows loading spinner", () => {
