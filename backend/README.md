@@ -1,6 +1,6 @@
 # Cerebra — Backend
 
-AI Agent Orchestration Platform backend.
+AI Agent Orchestration Platform backend. FastAPI + LangGraph + Gemini.
 
 ## Tech Stack & Reasoning
 

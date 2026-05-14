@@ -24,11 +24,11 @@ function getSystemTheme(): "light" | "dark" {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const saved = localStorage.getItem("orchid-theme")
+    const saved = localStorage.getItem("cerebra-theme")
     return (saved === "dark" || saved === "light" || saved === "system") ? saved : "system"
   })
   const [accent, setAccentState] = useState<Accent>(() => {
-    const saved = localStorage.getItem("orchid-accent")
+    const saved = localStorage.getItem("cerebra-accent")
     return ACCENTS.includes(saved as Accent) ? (saved as Accent) : "blue"
   })
 
@@ -36,12 +36,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", resolvedTheme)
-    localStorage.setItem("orchid-theme", theme)
+    localStorage.setItem("cerebra-theme", theme)
   }, [theme, resolvedTheme])
 
   useEffect(() => {
     document.documentElement.setAttribute("data-accent", accent)
-    localStorage.setItem("orchid-accent", accent)
+    localStorage.setItem("cerebra-accent", accent)
   }, [accent])
 
   useEffect(() => {

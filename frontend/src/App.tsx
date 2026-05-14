@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Routes, Route, NavLink, useLocation } from "react-router-dom"
-import { Zap, Wrench, Bot, GitBranch, Radio, Activity, Settings, Menu, X } from "lucide-react"
+import { Zap, Wrench, Bot, GitBranch, Radio, Activity, Settings, Menu, X, FileText } from "lucide-react"
 import { ThemeProvider } from "@/contexts/ThemeContext"
 import AgentsPage from "@/pages/AgentsPage"
 import WorkflowsPage from "@/pages/WorkflowsPage"
@@ -12,6 +12,7 @@ import ProvidersPage from "@/pages/ProvidersPage"
 import ToolsPage from "@/pages/ToolsPage"
 import SettingsPage from "@/pages/SettingsPage"
 import Dashboard from "@/pages/Dashboard"
+import TemplatesPage from "@/pages/TemplatesPage"
 import ThemeToggle from "@/components/ui/ThemeToggle"
 import AccentPicker from "@/components/ui/AccentPicker"
 
@@ -22,6 +23,7 @@ function Page({ children }: { children: React.ReactNode }) {
 
 const navItems = [
   { to: "/providers", label: "Providers", icon: Zap },
+  { to: "/templates", label: "Templates", icon: FileText },
   { to: "/tools", label: "Tools", icon: Wrench },
   { to: "/agents", label: "Agents", icon: Bot },
   { to: "/workflows", label: "Workflows", icon: GitBranch },
@@ -40,8 +42,7 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
       <aside className={`${collapsed ? "-translate-x-full" : "translate-x-0"} fixed lg:static z-50 w-60 h-full border-r border-border bg-card shrink-0 flex flex-col transition-all duration-300 ease-in-out`}>
         <div className="flex items-center justify-between p-5 pb-3">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: "var(--accent)" }}>O</div>
-            <span className="text-lg font-bold tracking-tight" style={{ color: "var(--accent)" }}>rchid</span>
+            <span className="text-lg font-bold tracking-tight" style={{ color: "var(--accent)" }}>Cerebra</span>
           </div>
           <button onClick={onToggle} className="lg:hidden p-1.5 rounded-lg hover:bg-accent-soft transition-colors">
             <X className="w-4 h-4" />
@@ -89,15 +90,15 @@ function AppContent() {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md flex items-center justify-center text-white text-[10px] font-bold" style={{ background: "var(--accent)" }}>O</div>
-            <span className="text-sm font-bold tracking-tight" style={{ color: "var(--accent)" }}>rchid</span>
+            <span className="text-sm font-bold tracking-tight" style={{ color: "var(--accent)" }}>Cerebra</span>
           </div>
         </div>
         <div className="p-4 sm:p-6">
           <Routes>
             <Route path="/" element={<Page><Dashboard /></Page>} />
-            <Route path="/providers" element={<Page><ProvidersPage /></Page>} />
-            <Route path="/tools" element={<Page><ToolsPage /></Page>} />
+          <Route path="/providers" element={<Page><ProvidersPage /></Page>} />
+          <Route path="/templates" element={<Page><TemplatesPage /></Page>} />
+          <Route path="/tools" element={<Page><ToolsPage /></Page>} />
             <Route path="/agents" element={<Page><AgentsPage /></Page>} />
             <Route path="/workflows" element={<Page><WorkflowsPage /></Page>} />
             <Route path="/channels" element={<Page><ChannelsPage /></Page>} />
