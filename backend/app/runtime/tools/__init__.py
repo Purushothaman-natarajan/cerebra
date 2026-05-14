@@ -7,6 +7,8 @@ import app.runtime.tools.random_number  # noqa: F401
 import app.runtime.tools.text_analyzer  # noqa: F401
 import app.runtime.tools.json_tool  # noqa: F401
 import app.runtime.tools.url_info  # noqa: F401
+import app.runtime.tools.circl_cve  # noqa: F401
+import app.runtime.tools.code_interpreter  # noqa: F401
 
 from app.runtime.tools.registry import get_tool, get_tool_definitions, list_tools
 

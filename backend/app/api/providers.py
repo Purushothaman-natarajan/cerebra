@@ -57,27 +57,6 @@ async def create_provider(body: ProviderCreate, db: AsyncSession = Depends(get_d
     return await provider_service.create_provider(db, data)
 
 
-@router.patch("/{provider_id}", response_model=dict,
-    responses={**response_example({"id": "...", "name": "My OpenAI", "is_active": True}),
-               **{404: {"description": "Provider not found"}}})
-async def update_provider(provider_id: str, body: ProviderUpdate, db: AsyncSession = Depends(get_db)):
-    """Update provider config. Only provided fields are changed. API key is re-encrypted."""
-    result = await provider_service.update_provider(db, provider_id, body.model_dump(exclude_none=True))
-    if not result:
-        raise HTTPException(404, "Provider not found")
-    return result
-
-
-@router.delete("/{provider_id}", response_model=DeleteResponse,
-    responses={**response_example({"ok": True}), **{404: {"description": "Provider not found"}}})
-async def delete_provider(provider_id: str, db: AsyncSession = Depends(get_db)):
-    """Remove a provider. Encrypted key is permanently deleted."""
-    deleted = await provider_service.delete_provider(db, provider_id)
-    if not deleted:
-        raise HTTPException(404, "Provider not found")
-    return {"ok": True}
-
-
 @router.get("/models", response_model=list[ProviderModelResponse],
     responses=list_response_example([_MODEL_EXAMPLE]))
 async def list_available_models(db: AsyncSession = Depends(get_db)):
@@ -165,4 +144,25 @@ async def list_presets():
 async def clear_all_provider_keys(db: AsyncSession = Depends(get_db)):
     """Clear all provider API keys. Keys are permanently removed (set to empty string)."""
     count = await provider_service.clear_all_keys(db)
+    return {"ok": True}
+
+
+@router.patch("/{provider_id}", response_model=dict,
+    responses={**response_example({"id": "...", "name": "My OpenAI", "is_active": True}),
+               **{404: {"description": "Provider not found"}}})
+async def update_provider(provider_id: str, body: ProviderUpdate, db: AsyncSession = Depends(get_db)):
+    """Update provider config. Only provided fields are changed. API key is re-encrypted."""
+    result = await provider_service.update_provider(db, provider_id, body.model_dump(exclude_none=True))
+    if not result:
+        raise HTTPException(404, "Provider not found")
+    return result
+
+
+@router.delete("/{provider_id}", response_model=DeleteResponse,
+    responses={**response_example({"ok": True}), **{404: {"description": "Provider not found"}}})
+async def delete_provider(provider_id: str, db: AsyncSession = Depends(get_db)):
+    """Remove a provider. Encrypted key is permanently deleted."""
+    deleted = await provider_service.delete_provider(db, provider_id)
+    if not deleted:
+        raise HTTPException(404, "Provider not found")
     return {"ok": True}

@@ -35,9 +35,17 @@ DEFAULT_TEMPLATES = [
     {
         "name": "Code Reviewer",
         "role": "coder",
-        "system_prompt": "You are a senior code reviewer. Search for best practices, fetch documentation URLs, analyze code quality, and provide constructive feedback.",
-        "tools": ["web_search", "url_info"],
+        "system_prompt": "You are a senior code reviewer. Search for best practices, fetch documentation URLs, run small Python checks when useful, analyze code quality, and provide constructive feedback.",
+        "tools": ["web_search", "url_info", "code_interpreter"],
         "model": "gemini-2.0-flash", "memory_enabled": False, "max_iterations": 10,
+        "guardrails": {"blocked_topics": [], "max_tokens": 8192},
+    },
+    {
+        "name": "Security Analyst",
+        "role": "security",
+        "system_prompt": "You are a security analyst. Investigate CVEs, explain impact and mitigations, use CIRCL CVE lookup for vulnerability details, and run small Python snippets for parsing or scoring tasks.",
+        "tools": ["circl_cve", "web_search", "url_info", "code_interpreter"],
+        "model": "gemini-2.0-flash", "memory_enabled": False, "max_iterations": 12,
         "guardrails": {"blocked_topics": [], "max_tokens": 8192},
     },
     {
@@ -98,14 +106,15 @@ async def delete_template(db: AsyncSession, template_id: str) -> bool:
 
 
 async def seed_defaults(db: AsyncSession) -> int:
-    """Seed default templates if none exist. Returns count seeded."""
-    result = await db.execute(select(AgentTemplate).limit(1))
-    if result.scalar_one_or_none():
-        return 0
+    """Seed any missing default templates. Returns count seeded."""
+    result = await db.execute(select(AgentTemplate.name).where(AgentTemplate.is_default == True))
+    existing_names = set(result.scalars().all())
     count = 0
     for data in DEFAULT_TEMPLATES:
-        data["is_default"] = True
-        db.add(AgentTemplate(**data))
+        if data["name"] in existing_names:
+            continue
+        row = {**data, "is_default": True}
+        db.add(AgentTemplate(**row))
         count += 1
     await db.flush()
     return count

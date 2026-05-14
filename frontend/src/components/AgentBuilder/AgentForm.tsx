@@ -1,6 +1,6 @@
 /** Agent form — provider selector, model picker, tools, memory, guardrails. Stable render — no useEffect resets. */
 
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { AgentFormData } from "@/api/agents"
 import { useAvailableModels, useProviders } from "@/api/providers"
 import { useAgentTools } from "@/api/tools"
@@ -20,13 +20,19 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
   const navigate = useNavigate()
 
   const [form, setForm] = useState<AgentFormData>(() => initial ?? {
-    name: "", role: "", system_prompt: "", model: availableModels?.[0]?.model || "gemini-2.0-flash",
+    name: "", role: "", system_prompt: "", model: "",
     tools: [], memory_enabled: false, max_iterations: 10,
     guardrails: { blocked_topics: [], max_tokens: 4096 },
   })
   const [selectedProvider, setSelectedProvider] = useState<string>("")
 
   const update = (key: keyof AgentFormData, value: unknown) => setForm((f) => ({ ...f, [key]: value }))
+
+  useEffect(() => {
+    if (!initial?.model || !availableModels?.length || selectedProvider) return
+    const modelProvider = availableModels.find((m) => m.model === initial.model)
+    if (modelProvider) setSelectedProvider(modelProvider.provider_id)
+  }, [availableModels, initial?.model, selectedProvider])
 
   const toggleTool = (tool: string) => {
     setForm((f) => ({
@@ -45,7 +51,7 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
     }))
   }, [selectedProvider, availableModels])
 
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(form) }
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (form.model) onSave(form) }
 
   if (!providers || providers.length === 0) {
     return (
@@ -80,6 +86,7 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
             { value: "", label: "Select provider..." },
             ...(providers?.map((p) => ({ value: p.id, label: p.name, group: p.provider_type })) ?? []),
           ]}
+          required
         />
         <Select
           label="Model"
@@ -87,6 +94,7 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
           onChange={(e) => update("model", e.target.value)}
           options={modelOptions}
           disabled={!selectedProvider}
+          required
         />
       </div>
 

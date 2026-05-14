@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.docs import list_response_example, response_example
 from app.models.tool import CustomTool
+import app.runtime.tools  # noqa: F401 - import built-ins so decorators populate the registry
 from app.runtime.tools.registry import get_tool, get_tool_definitions
 from app.schemas import ToolCreate, ToolTest, ToolTestResult, DeleteResponse
 from app.services import tool_service
@@ -71,7 +72,23 @@ async def test_tool(body: ToolTest, db: AsyncSession = Depends(get_db)):
     import httpx
     import time
 
-    result = await db.execute(select(CustomTool).where(CustomTool.id == uuid.UUID(body.tool_id)))
+    try:
+        tool_uuid = uuid.UUID(body.tool_id)
+    except ValueError:
+        fn = get_tool(body.tool_id)
+        if not fn:
+            raise HTTPException(404, "Tool not found")
+
+        start = time.monotonic()
+        try:
+            result = await fn(body.input)
+            elapsed = int((time.monotonic() - start) * 1000)
+            return {"ok": True, "output": str(result)[:5000], "duration_ms": elapsed}
+        except Exception as e:
+            elapsed = int((time.monotonic() - start) * 1000)
+            return {"ok": False, "output": f"Error: {e}", "duration_ms": elapsed}
+
+    result = await db.execute(select(CustomTool).where(CustomTool.id == tool_uuid))
     tool = result.scalar_one_or_none()
     if not tool:
         raise HTTPException(404, "Tool not found")
@@ -134,19 +151,6 @@ async def test_builtin_tool(body: ToolTest, db: AsyncSession = Depends(get_db)):
         return {"ok": False, "output": f"Error: {e}", "duration_ms": elapsed}
 
 
-@router.delete("/{tool_id}", response_model=DeleteResponse,
-    responses={**response_example({"ok": True}), **{404: {"description": "Tool not found"}}})
-async def delete_tool(tool_id: str, db: AsyncSession = Depends(get_db)):
-    """Delete a custom tool by UUID. Built-in tools cannot be deleted."""
-    result = await db.execute(select(CustomTool).where(CustomTool.id == uuid.UUID(tool_id)))
-    tool = result.scalar_one_or_none()
-    if not tool:
-        raise HTTPException(404, "Tool not found")
-    await db.delete(tool)
-    await db.flush()
-    return {"ok": True}
-
-
 @router.get("/export", response_model=list[dict])
 async def export_tools_endpoint(db: AsyncSession = Depends(get_db)):
     """Export all custom tools as a JSON array. No input required."""
@@ -158,5 +162,18 @@ async def import_tools_endpoint(body: list[dict], db: AsyncSession = Depends(get
     """Import custom tools from a JSON array. Each object must have a name."""
     count = await tool_service.import_tools(db, body)
     return {"ok": True, "imported": count}
+
+
+@router.delete("/{tool_id}", response_model=DeleteResponse,
+    responses={**response_example({"ok": True}), **{404: {"description": "Tool not found"}}})
+async def delete_tool(tool_id: str, db: AsyncSession = Depends(get_db)):
+    """Delete a custom tool by UUID. Built-in tools cannot be deleted."""
+    result = await db.execute(select(CustomTool).where(CustomTool.id == uuid.UUID(tool_id)))
+    tool = result.scalar_one_or_none()
+    if not tool:
+        raise HTTPException(404, "Tool not found")
+    await db.delete(tool)
+    await db.flush()
+    return {"ok": True}
 
 

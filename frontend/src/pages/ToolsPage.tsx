@@ -6,7 +6,7 @@ import type { ToolFormData } from "@/api/tools"
 import { Button, Card, Badge, Dialog, SkeletonCard } from "@/components/ui"
 import ToolForm from "@/components/ToolBuilder/ToolForm"
 import ToolTestDialog from "@/components/ToolBuilder/ToolTestDialog"
-import { Search, Calculator, Globe, Plus, Play, Clock, Dice6, AlignLeft, Braces, Link, Download, Upload } from "lucide-react"
+import { Search, Calculator, Globe, Plus, Play, Clock, Dice6, AlignLeft, Braces, Link, Download, Upload, ShieldAlert, TerminalSquare } from "lucide-react"
 
 interface TestToolState {
    name: string
@@ -18,6 +18,7 @@ interface TestToolState {
  const toolIcons: Record<string, typeof Search> = {
    web_search: Search, calculator: Calculator, http_request: Globe, web_crawler: Globe,
    current_time: Clock, random_number: Dice6, text_analyzer: AlignLeft, json_tool: Braces, url_info: Link,
+   circl_cve: ShieldAlert, code_interpreter: TerminalSquare,
  }
 
  const SAMPLE_INPUTS: Record<string, string> = {
@@ -30,6 +31,8 @@ interface TestToolState {
    url_info: "https://example.com",
    http_request: "https://api.github.com",
    web_crawler: "https://en.wikipedia.org/wiki/Artificial_intelligence",
+   circl_cve: "CVE-2024-3094",
+   code_interpreter: '{"code":"numbers = [1, 2, 3, 4]\\nresult = sum(numbers) / len(numbers)","input":""}',
  }
 
 export default function ToolsPage() {

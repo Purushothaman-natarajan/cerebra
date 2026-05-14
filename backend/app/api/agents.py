@@ -34,42 +34,12 @@ async def list_agents(db: AsyncSession = Depends(get_db)):
     return [AgentResponse.from_orm(a) for a in agents]
 
 
-@router.get("/{agent_id}", response_model=AgentResponse,
-    responses={**response_example(_AGENT_EXAMPLE), **{404: {"description": "Agent not found"}}})
-async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
-    """Get a single agent by UUID."""
-    agent = await agent_service.get_agent(db, agent_id)
-    if not agent:
-        raise HTTPException(404, "Agent not found")
-    return AgentResponse.from_orm(agent)
-
-
 @router.post("", status_code=201, response_model=AgentResponse,
     responses={**response_example(_AGENT_EXAMPLE), **{422: {"description": "Validation error"}}})
 async def create_agent(body: AgentCreate, db: AsyncSession = Depends(get_db)):
     """Create a new agent with system prompt, model, tools, and guardrails."""
     agent = await agent_service.create_agent(db, body.model_dump())
     return AgentResponse.from_orm(agent)
-
-
-@router.patch("/{agent_id}", response_model=AgentResponse,
-    responses={**response_example(_AGENT_EXAMPLE), **{404: {"description": "Agent not found"}}})
-async def update_agent(agent_id: str, body: AgentUpdate, db: AsyncSession = Depends(get_db)):
-    """Update an existing agent. Only provided fields are changed."""
-    agent = await agent_service.update_agent(db, agent_id, body.model_dump(exclude_none=True))
-    if not agent:
-        raise HTTPException(404, "Agent not found")
-    return AgentResponse.from_orm(agent)
-
-
-@router.delete("/{agent_id}", response_model=DeleteResponse,
-    responses={**response_example({"ok": True}), **{404: {"description": "Agent not found"}}})
-async def delete_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
-    """Delete an agent by UUID."""
-    deleted = await agent_service.delete_agent(db, agent_id)
-    if not deleted:
-        raise HTTPException(404, "Agent not found")
-    return {"ok": True}
 
 
 @router.get("/export", response_model=list[dict])
@@ -104,3 +74,33 @@ async def test_agent(agent_id: str, body: AgentTestCreate, db: AsyncSession = De
     if not result.get("ok") and result.get("output") == "Agent not found":
         raise HTTPException(404, "Agent not found")
     return result
+
+
+@router.get("/{agent_id}", response_model=AgentResponse,
+    responses={**response_example(_AGENT_EXAMPLE), **{404: {"description": "Agent not found"}}})
+async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+    """Get a single agent by UUID."""
+    agent = await agent_service.get_agent(db, agent_id)
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    return AgentResponse.from_orm(agent)
+
+
+@router.patch("/{agent_id}", response_model=AgentResponse,
+    responses={**response_example(_AGENT_EXAMPLE), **{404: {"description": "Agent not found"}}})
+async def update_agent(agent_id: str, body: AgentUpdate, db: AsyncSession = Depends(get_db)):
+    """Update an existing agent. Only provided fields are changed."""
+    agent = await agent_service.update_agent(db, agent_id, body.model_dump(exclude_none=True))
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    return AgentResponse.from_orm(agent)
+
+
+@router.delete("/{agent_id}", response_model=DeleteResponse,
+    responses={**response_example({"ok": True}), **{404: {"description": "Agent not found"}}})
+async def delete_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+    """Delete an agent by UUID."""
+    deleted = await agent_service.delete_agent(db, agent_id)
+    if not deleted:
+        raise HTTPException(404, "Agent not found")
+    return {"ok": True}

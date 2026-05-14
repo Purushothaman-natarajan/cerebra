@@ -1,10 +1,9 @@
 /** Agents page — create/edit with form, loading/error/empty states + template presets. */
 
-import { useEffect, useRef, useState, useMemo } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent, useAgentTemplates, exportAllAgents, useImportAgents } from "@/api/agents"
 import type { AgentFormData } from "@/api/agents"
 import { useAgentStore } from "@/store/agentStore"
-import { useAvailableModels } from "@/api/providers"
 import AgentCard from "@/components/AgentBuilder/AgentCard"
 import AgentForm from "@/components/AgentBuilder/AgentForm"
 import AgentTestDialog from "@/components/AgentBuilder/AgentTestDialog"
@@ -18,16 +17,9 @@ export default function AgentsPage() {
   const deleteAgent = useDeleteAgent()
   const { data: templates } = useAgentTemplates()
   const importAgents = useImportAgents()
-  const { data: availableModels } = useAvailableModels()
   const { isFormOpen, editingAgent, openForm, closeForm } = useAgentStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [testAgentId, setTestAgentId] = useState<string | null>(null)
-
-  // First available model from configured providers, or a sensible default
-  const defaultModel = useMemo(() => {
-    if (availableModels && availableModels.length > 0) return availableModels[0].model
-    return "gemini-2.0-flash"
-  }, [availableModels])
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -84,7 +76,7 @@ export default function AgentsPage() {
           </h2>
           <div className="flex flex-wrap gap-2 mb-6">
             {templates.map((tmpl) => (
-              <button key={tmpl.id} onClick={() => openForm({ id: "", data: { name: tmpl.name, role: tmpl.role, system_prompt: tmpl.system_prompt, model: defaultModel, tools: tmpl.tools, memory_enabled: tmpl.memory_enabled, max_iterations: tmpl.max_iterations, guardrails: { blocked_topics: tmpl.guardrails?.blocked_topics ?? [], max_tokens: tmpl.guardrails?.max_tokens ?? 4096 } } })}
+              <button key={tmpl.id} onClick={() => openForm({ id: "", data: { name: tmpl.name, role: tmpl.role, system_prompt: tmpl.system_prompt, model: "", tools: tmpl.tools, memory_enabled: tmpl.memory_enabled, max_iterations: tmpl.max_iterations, guardrails: { blocked_topics: tmpl.guardrails?.blocked_topics ?? [], max_tokens: tmpl.guardrails?.max_tokens ?? 4096 } } })}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:border-accent/50 hover:bg-accent-soft transition-all text-sm group"
               >
                 <LayoutTemplate className="w-4 h-4 text-muted group-hover:text-accent" />

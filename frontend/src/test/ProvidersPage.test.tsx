@@ -1,6 +1,6 @@
 /** Tests for the ProvidersPage — provider list, add dialog, test connection, presets. */
 
-import { describe, it, expect, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { BrowserRouter } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -36,7 +36,7 @@ function renderWithProviders(ui: React.ReactElement) {
 describe("ProvidersPage", () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    ;(apiFetch as vi.Mock).mockResolvedValue([])
+    ;(apiFetch as Mock).mockResolvedValue([])
   })
 
   it("renders the page heading", async () => {
@@ -65,7 +65,7 @@ describe("ProvidersPage", () => {
       { type: "openai", label: "OpenAI", base_url: "https://api.openai.com/v1", key_hint: "sk-...", key_example: "sk-proj-abc123" },
       { type: "gemini", label: "Gemini", base_url: "https://generativelanguage.googleapis.com/v1beta", key_hint: "AIza...", key_example: "AIzaSy..." },
     ]
-    ;(apiFetch as vi.Mock).mockImplementation((url: string) => {
+    ;(apiFetch as Mock).mockImplementation((url: string) => {
       if (url === "/providers/presets") return Promise.resolve(mockPresets)
       return Promise.resolve([])
     })
