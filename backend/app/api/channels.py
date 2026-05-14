@@ -1,8 +1,4 @@
-"""Channel configuration and webhook endpoints.
-
-Currently supports Telegram as a messaging channel.
-TelegramBot reads incoming messages and triggers configured workflows.
-"""
+"""Channel management — currently supports Telegram messaging integration."""
 
 from sqlalchemy import select
 
@@ -15,27 +11,32 @@ from app.db import get_db
 from app.models.message import Channel, ChannelMessage
 from app.models.workflow import WorkflowDef
 from app.runtime.executor import run_workflow
+from app.schemas import ChannelCreate, ChannelResponse, DeleteResponse
 
 router = APIRouter(prefix="/channels", tags=["channels"])
 
 
-@router.get("")
+@router.get("", response_model=list[ChannelResponse])
 async def list_channels(db: AsyncSession = Depends(get_db)):
-    """List all configured channels."""
+    """List all configured channels. No input required."""
     result = await db.execute(select(Channel).order_by(Channel.created_at.desc()))
     return [
-        {
-            "id": str(c.id), "name": c.name, "type": c.type,
-            "config": c.config, "created_at": c.created_at.isoformat(),
-        }
+        {"id": str(c.id), "name": c.name, "type": c.type,
+         "config": c.config, "created_at": c.created_at.isoformat()}
         for c in result.scalars().all()
     ]
 
 
-@router.post("", status_code=201)
-async def create_channel(body: dict, db: AsyncSession = Depends(get_db)):
-    """Create a new channel (e.g., Telegram bot connection)."""
-    channel = Channel(name=body["name"], type=body.get("type", "telegram"), config=body.get("config", {}))
+@router.post("", status_code=201, response_model=ChannelResponse,
+    responses={400: {"description": "Validation error"}})
+async def create_channel(body: ChannelCreate, db: AsyncSession = Depends(get_db)):
+    """Create a new messaging channel (e.g., Telegram bot connection).
+
+    For Telegram: provide name="Telegram", type="telegram",
+    config with bot_token, webhook_url, and optional workflow_id.
+    If TELEGRAM_BOT_TOKEN is set in env, the webhook URL is auto-registered.
+    """
+    channel = Channel(name=body.name, type=body.type, config=body.config)
     db.add(channel)
     await db.flush()
 
@@ -43,17 +44,17 @@ async def create_channel(body: dict, db: AsyncSession = Depends(get_db)):
         tg = TelegramChannel(settings.telegram_bot_token, settings.telegram_webhook_url)
         await tg.set_webhook()
 
-    return {
-        "id": str(channel.id), "name": channel.name, "type": channel.type,
-        "config": channel.config, "created_at": channel.created_at.isoformat(),
-    }
+    return {"id": str(channel.id), "name": channel.name, "type": channel.type,
+            "config": channel.config, "created_at": channel.created_at.isoformat()}
 
 
-@router.post("/webhook/telegram")
+@router.post("/webhook/telegram", response_model=dict)
 async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     """Receive incoming Telegram messages via webhook.
 
-    Parses the message, persists it, and triggers the bound workflow if configured.
+    Parses the message, persists it in channel_messages,
+    and triggers the bound workflow if configured.
+    This endpoint is public (no auth required for webhook delivery).
     """
     payload = await request.json()
     tg = TelegramChannel(settings.telegram_bot_token)
