@@ -215,6 +215,47 @@ class ProviderCreate(BaseModel):
         description="When false, models won't appear in the selector.")
 
 
+class ProviderUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=255,
+        description="Updated display name.", examples=["My OpenAI v2"])
+    base_url: str | None = Field(None, max_length=500,
+        description="Updated base URL.", examples=["https://api.openai.com/v1"])
+    api_key: str | None = Field(None, max_length=500,
+        description="New API key (replaces existing).", examples=["sk-...new-key"])
+    models: list[str] | None = Field(None, max_length=200,
+        description="Updated model list.", examples=[["gpt-4o", "gpt-4o-mini"]])
+    is_active: bool | None = Field(None,
+        description="Toggle active state.")
+
+
+class ProviderModelResponse(BaseModel):
+    model_config = _example({
+        "model": "gpt-4o",
+        "provider_name": "My OpenAI",
+        "provider_type": "openai",
+        "provider_id": "550e8400-e29b-41d4-a716-446655440003",
+    })
+    model: str = Field(description="Model identifier.")
+    provider_name: str = Field(description="Provider display name.")
+    provider_type: str = Field(description="Provider type.")
+    provider_id: str = Field(description="Provider UUID.")
+
+
+class ProviderPresetResponse(BaseModel):
+    model_config = _example({
+        "type": "openai",
+        "label": "OpenAI",
+        "base_url": "https://api.openai.com/v1",
+        "key_hint": "sk-...",
+        "key_example": "sk-proj-3aF8kD9mN2pQ7rX5vB1wJ4cL6nM0zS8t",
+    })
+    type: str = Field(description="Preset type identifier.")
+    label: str = Field(description="Display name.")
+    base_url: str = Field(description="Default base URL.")
+    key_hint: str = Field(description="Key format hint.")
+    key_example: str = Field(description="Example API key.")
+
+
 class ProviderTest(BaseModel):
     base_url: str = Field(..., max_length=500,
         description="Provider API base URL to test.",

@@ -4,7 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.schemas import ProviderCreate, ProviderResponse, ProviderTest, ProviderTestResponse, DeleteResponse
+from app.schemas import (
+    DeleteResponse, ProviderCreate, ProviderModelResponse, ProviderPresetResponse,
+    ProviderResponse, ProviderTest, ProviderTestResponse, ProviderUpdate,
+)
 from app.services import provider_service
 
 PRESETS: dict[str, dict] = {
@@ -70,8 +73,11 @@ async def create_provider(body: ProviderCreate, db: AsyncSession = Depends(get_d
 
 @router.patch("/{provider_id}", response_model=dict,
     responses={404: {"description": "Provider not found"}})
-async def update_provider(provider_id: str, body: dict, db: AsyncSession = Depends(get_db)):
-    """Update provider config (name, base_url, api_key, models, is_active)."""
+async def update_provider(provider_id: str, body: ProviderUpdate, db: AsyncSession = Depends(get_db)):
+    """Update provider config (name, base_url, api_key, models, is_active).
+
+    Only provided fields are changed. The API key, if updated, is re-encrypted.
+    """
     result = await provider_service.update_provider(db, provider_id, body)
     if not result:
         raise HTTPException(404, "Provider not found")
@@ -88,7 +94,7 @@ async def delete_provider(provider_id: str, db: AsyncSession = Depends(get_db)):
     return {"ok": True}
 
 
-@router.get("/models", response_model=list[dict])
+@router.get("/models", response_model=list[ProviderModelResponse])
 async def list_available_models(db: AsyncSession = Depends(get_db)):
     """Get all models from all active providers. No input required.
 
@@ -170,11 +176,12 @@ async def test_connection(body: ProviderTest):
         raise HTTPException(400, f"Connection failed: {e}")
 
 
-@router.get("/presets", response_model=list[dict])
+@router.get("/presets", response_model=list[ProviderPresetResponse])
 async def list_presets():
     """List available provider presets with suggested names, URLs, and key format hints.
 
-    No input required. Presets are: OpenAI, Google Gemini, Anthropic, Ollama, OpenRouter.
+    No input required. Presets: OpenAI, Google Gemini, Anthropic, Ollama, OpenRouter.
+    Each preset includes a key_hint and key_example for easy setup.
     """
     return [
         {"type": k, "label": v.get("name", k.title()), "base_url": v["base_url"],
