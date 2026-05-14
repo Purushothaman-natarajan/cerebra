@@ -1,3 +1,5 @@
+/** Agents screen — workers with roles, models, tools, memory. */
+
 import { useEffect } from "react"
 import { useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent } from "../api/agents"
 import type { AgentFormData } from "../api/agents"
@@ -23,22 +25,20 @@ export default function AgentsPage() {
   }, [openForm])
 
   const handleSave = (data: AgentFormData) => {
-    if (editingAgent) {
-      updateAgent.mutate({ id: editingAgent.id, data })
-    } else {
-      createAgent.mutate(data)
-    }
+    if (editingAgent) updateAgent.mutate({ id: editingAgent.id, data })
+    else createAgent.mutate(data)
     closeForm()
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm("Delete this agent?")) deleteAgent.mutate(id)
-  }
+  const handleDelete = (id: string) => { if (confirm("Delete this agent?")) deleteAgent.mutate(id) }
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Agents</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">🤖 Agents</h1>
+          <p className="text-sm text-muted mt-1">The workers in your workflows. Each has a role, model, and tools.</p>
+        </div>
         <Button onClick={() => openForm()}>+ New Agent</Button>
       </div>
 
@@ -55,12 +55,7 @@ export default function AgentsPage() {
       )}
 
       {!isLoading && agents?.length === 0 && (
-        <Empty
-          icon={<Bot className="w-12 h-12" />}
-          title="No agents yet"
-          description="Create your first agent to get started. Agents are LLM-powered workers with tools and guardrails."
-          action={{ label: "Create Agent", onClick: () => openForm() }}
-        />
+        <Empty icon={<Bot className="w-12 h-12" />} title="No agents yet" description="Create your first agent. Agents are LLM-powered workers with tools and guardrails." action={{ label: "Create Agent", onClick: () => openForm() }} />
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
