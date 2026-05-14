@@ -14,7 +14,7 @@ export default function ProvidersPage() {
   const deleteProvider = useDeleteProvider()
 
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState<ProviderFormData>({ name: "", provider_type: "custom", base_url: "", api_key: "" })
+  const [form, setForm] = useState<ProviderFormData>({ name: "", provider_type: "custom", base_url: "", api_key: "", models: [] })
   const [activePreset, setActivePreset] = useState<Preset | null>(null)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string; models?: string[] } | null>(null)
@@ -22,7 +22,7 @@ export default function ProvidersPage() {
 
   const applyPreset = (preset: Preset) => {
     setActivePreset(preset)
-    setForm({ name: preset.label, provider_type: preset.type, base_url: preset.base_url, api_key: "" })
+    setForm({ name: preset.label, provider_type: preset.type, base_url: preset.base_url, api_key: "", models: [] })
     setTestResult(null)
   }
 
@@ -34,6 +34,8 @@ export default function ProvidersPage() {
         method: "POST", body: JSON.stringify({ base_url: form.base_url, api_key: form.api_key, provider_type: form.provider_type }),
       })
       setTestResult({ ok: true, msg: `Connected! Models: ${result.models.slice(0, 3).join(", ")}`, models: result.models })
+      // Save discovered models to form so they're included on save
+      setForm((prev) => ({ ...prev, models: result.models }))
     } catch (e) {
       setTestResult({ ok: false, msg: e instanceof Error ? e.message : "Connection failed" })
     }
@@ -42,10 +44,14 @@ export default function ProvidersPage() {
 
   const handleSave = () => {
     if (!form.name || !form.base_url) return
-    createProvider.mutate(form, { onSuccess: () => {
-      setShowForm(false); setActivePreset(null)
-      setForm({ name: "", provider_type: "custom", base_url: "", api_key: "" }); setTestResult(null)
-    }})
+    createProvider.mutate(
+      { ...form, models: form.models || [] },
+      { onSuccess: () => {
+        setShowForm(false); setActivePreset(null)
+        setForm({ name: "", provider_type: "custom", base_url: "", api_key: "", models: [] })
+        setTestResult(null)
+      }}
+    )
   }
 
   const canTest = form.base_url && (form.provider_type === "ollama" || form.api_key)

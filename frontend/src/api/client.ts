@@ -1,3 +1,5 @@
+/** API client with auth headers and detailed error parsing from backend responses. */
+
 import { getAuthHeaders } from "./auth"
 
 const BASE = "/api"
@@ -18,10 +20,18 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   }
 
   if (!res.ok) {
-    const msg = res.status === 401
-      ? "Authentication required. Set your API key in settings."
-      : `Request failed (${res.status})`
-    throw new Error(msg)
+    let detail = ""
+    try {
+      const body = await res.json()
+      detail = body.detail || body.message || JSON.stringify(body)
+    } catch {
+      detail = res.statusText
+    }
+
+    if (res.status === 401) {
+      throw new Error("Authentication required. Set your API key in settings.")
+    }
+    throw new Error(detail || `Request failed (${res.status})`)
   }
 
   return res.json()
