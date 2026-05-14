@@ -17,3 +17,5 @@ credentials*
 .env.production
 *.egg-info/
 .python-version
+*.pid
+backend/start_dev.py
