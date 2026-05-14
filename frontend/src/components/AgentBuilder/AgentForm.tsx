@@ -1,10 +1,11 @@
-/** Agent form — 4-tab form with provider dropdown, model selector, tools, memory, guardrails. */
+/** Agent form — provider selector, model picker, tools, memory, guardrails. Stable render — no useEffect resets. */
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useMemo } from "react"
 import type { AgentFormData } from "@/api/agents"
 import { useAvailableModels, useProviders } from "@/api/providers"
 import { useAgentTools } from "@/api/tools"
 import { Button, Input, Textarea, Select } from "@/components/ui"
+import { useNavigate } from "react-router-dom"
 
 interface Props {
   initial?: AgentFormData
@@ -16,21 +17,14 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
   const { data: providers } = useProviders()
   const { data: availableModels } = useAvailableModels()
   const { data: agentTools } = useAgentTools()
+  const navigate = useNavigate()
 
-  const [form, setForm] = useState<AgentFormData>({
+  const [form, setForm] = useState<AgentFormData>(() => initial ?? {
     name: "", role: "", system_prompt: "", model: "gemini-2.0-flash",
     tools: [], memory_enabled: false, max_iterations: 10,
     guardrails: { blocked_topics: [], max_tokens: 4096 },
   })
   const [selectedProvider, setSelectedProvider] = useState<string>("")
-
-  useEffect(() => {
-    if (initial) {
-      setForm(initial)
-      const modelInfo = availableModels?.find((m) => m.model === initial.model)
-      if (modelInfo) setSelectedProvider(modelInfo.provider_id)
-    }
-  }, [initial, availableModels])
 
   const update = (key: keyof AgentFormData, value: unknown) => setForm((f) => ({ ...f, [key]: value }))
 
@@ -57,6 +51,19 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(form) }
 
+  if (!providers || providers.length === 0) {
+    return (
+      <div className="space-y-4 p-6 rounded-xl border border-border bg-card text-center">
+        <p className="text-muted font-medium">No LLM providers configured</p>
+        <p className="text-sm text-muted mb-4">Add a provider (OpenAI, Gemini, Ollama, etc.) before creating agents.</p>
+        <div className="flex gap-3 justify-center">
+          <Button onClick={() => navigate("/providers")}>Add Provider</Button>
+          <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-6 rounded-xl border border-border bg-card">
       <h2 className="text-lg font-semibold text-foreground">{initial ? "Edit Agent" : "New Agent"}</h2>
@@ -68,7 +75,6 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
 
       <Textarea label="System Prompt" value={form.system_prompt} onChange={(e) => update("system_prompt", e.target.value)} rows={5} required />
 
-      {/* Provider + Model row */}
       <div className="grid grid-cols-2 gap-4">
         <Select
           label="Provider"
@@ -92,7 +98,6 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
         <Input label="Max Iterations" type="number" value={form.max_iterations} onChange={(e) => update("max_iterations", Number(e.target.value))} min={1} />
       </div>
 
-      {/* Tools */}
       <div>
         <label className="block text-sm font-medium text-foreground mb-2">Tools</label>
         <div className="flex flex-wrap gap-2">
@@ -109,7 +114,6 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
         <p className="text-[10px] text-muted mt-1">Built-in tools marked with *</p>
       </div>
 
-      {/* Memory toggle */}
       <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
         <input type="checkbox" checked={form.memory_enabled} onChange={(e) => update("memory_enabled", e.target.checked)}
           className="rounded border-border accent-accent" />
