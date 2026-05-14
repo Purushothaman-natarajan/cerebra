@@ -1,4 +1,4 @@
-/** Root layout: responsive sidebar + themed content with back navigation and page animations. */
+/** Root layout: responsive sidebar + themed content with back nav and page animations. */
 
 import { useState, type ReactNode } from "react"
 import { Routes, Route, NavLink, useLocation, useNavigate } from "react-router-dom"
@@ -32,14 +32,13 @@ const navItems = [
   { to: "/settings", label: "Settings", icon: Settings },
 ]
 
-/** Back button shown on sub-pages to return to Dashboard. */
 function BackButton() {
   const location = useLocation()
   const navigate = useNavigate()
   if (location.pathname === "/") return null
   return (
     <button onClick={() => navigate(-1)}
-      className="flex items-center gap-1.5 text-xs text-muted hover:text-accent transition-colors mb-3 group"
+      className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-accent transition-colors mb-4 group"
     >
       <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
       Back
@@ -55,7 +54,7 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden" onClick={onToggle} />
       )}
       <aside className={`${collapsed ? "-translate-x-full" : "translate-x-0"} fixed lg:static z-50 w-60 h-full border-r border-border bg-card shrink-0 flex flex-col transition-all duration-300 ease-in-out`}>
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-border">
           <span className="text-lg font-bold tracking-tight" style={{ color: "var(--accent)" }}>Cerebra</span>
           <button onClick={onToggle} className="lg:hidden p-1.5 rounded-lg hover:bg-accent-soft transition-colors">
             <X className="w-4 h-4" />
@@ -88,15 +87,32 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
   )
 }
 
+/** Normal pages: padded, scrollable content */
+function StandardPage({ children }: { children: ReactNode }) {
+  return (
+    <div className="p-4 sm:p-6 overflow-auto flex-1">
+      <BackButton />
+      <Page>{children}</Page>
+    </div>
+  )
+}
+
+/** Full-bleed pages: no padding, fills the main area */
+function FullPage({ children }: { children: ReactNode }) {
+  return <div className="flex-1 overflow-hidden">{children}</div>
+}
+
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const location = useLocation()
+  const isFullLayout = ["/workflows", "/runs"].some((p) => location.pathname.startsWith(p) && location.pathname !== "/")
 
   return (
     <div className="min-h-screen flex" style={{ background: "var(--bg-primary)" }}>
       <Sidebar collapsed={!sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
-      <main className="flex-1 overflow-auto min-w-0 flex flex-col" style={{ background: "var(--bg-secondary)" }}>
-        {/* Mobile header */}
-        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-30">
+      <main className="flex-1 flex flex-col min-w-0" style={{ background: "var(--bg-secondary)" }}>
+        {/* Mobile header — hidden on desktop */}
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm shrink-0">
           <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded-lg hover:bg-accent-soft transition-colors">
             <Menu className="w-5 h-5" />
           </button>
@@ -106,20 +122,24 @@ function AppContent() {
             <span>Encrypted</span>
           </div>
         </div>
-        <div className="flex-1 p-4 sm:p-6 overflow-auto">
-          <BackButton />
+
+        {isFullLayout ? (
           <Routes>
-            <Route path="/" element={<Page><Dashboard /></Page>} />
-            <Route path="/providers" element={<Page><ProvidersPage /></Page>} />
-            <Route path="/templates" element={<Page><TemplatesPage /></Page>} />
-            <Route path="/tools" element={<Page><ToolsPage /></Page>} />
-            <Route path="/agents" element={<Page><AgentsPage /></Page>} />
-            <Route path="/workflows" element={<Page><WorkflowsPage /></Page>} />
-            <Route path="/channels" element={<Page><ChannelsPage /></Page>} />
-            <Route path="/runs" element={<Page><RunsPage /></Page>} />
-            <Route path="/settings" element={<Page><SettingsPage /></Page>} />
+            <Route path="/workflows" element={<FullPage><WorkflowsPage /></FullPage>} />
+            <Route path="/runs" element={<FullPage><RunsPage /></FullPage>} />
+            <Route path="*" element={null} />
           </Routes>
-        </div>
+        ) : (
+          <Routes>
+            <Route path="/" element={<StandardPage><Dashboard /></StandardPage>} />
+            <Route path="/providers" element={<StandardPage><ProvidersPage /></StandardPage>} />
+            <Route path="/templates" element={<StandardPage><TemplatesPage /></StandardPage>} />
+            <Route path="/tools" element={<StandardPage><ToolsPage /></StandardPage>} />
+            <Route path="/agents" element={<StandardPage><AgentsPage /></StandardPage>} />
+            <Route path="/channels" element={<StandardPage><ChannelsPage /></StandardPage>} />
+            <Route path="/settings" element={<StandardPage><SettingsPage /></StandardPage>} />
+          </Routes>
+        )}
       </main>
     </div>
   )

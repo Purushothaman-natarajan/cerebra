@@ -46,7 +46,7 @@ export default function RunsPage() {
   const estimatedCost = (events?.length ?? 0) * 0.0005
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] lg:h-screen -m-4 sm:-m-6">
+    <div className="flex h-full">
       {/* Runs list */}
       <div className="w-60 border-r border-border overflow-y-auto bg-card shrink-0 flex flex-col">
         <div className="p-4 border-b border-border">
