@@ -1,4 +1,4 @@
-# Cerebra
+# 🌸 Orchid
 
 AI Agent Orchestration Platform — multi-agent workflows with a visual canvas, multi-LLM support, custom tool building, and Telegram integration.
 
@@ -26,7 +26,7 @@ docker compose up --build
 ## Architecture
 
 ```
-React Frontend (ReactFlow canvas + 7 pages)
+React Frontend (ReactFlow canvas + 8 pages)
     │ REST + WebSocket (auth: Bearer token)
 FastAPI Backend (auth middleware → routers → services)
     │ LangGraph CompiledGraph
@@ -47,61 +47,21 @@ PostgreSQL (state, history)   Telegram Bot (channel)
 | **Frontend** | React 19 + TypeScript | Zustand, TanStack Query, ReactFlow, Tailwind |
 | **Infra** | Docker Compose | Single command boot: `docker compose up` |
 
-## Project Structure
+## Navigation
 
 ```
-├── backend/           # FastAPI + LangGraph + Gemini
-│   ├── app/api/       # 8 route modules (agents, workflows, runs, templates, providers, tools, channels, ws)
-│   ├── app/models/    # 7 SQLAlchemy models
-│   ├── app/runtime/   # LangGraph compiler, executor, nodes, tools
-│   ├── app/services/  # Business logic
-│   ├── app/channels/  # Telegram integration
-│   └── tests/         # pytest suite (15 tests)
-├── frontend/          # React + TypeScript + ReactFlow
-│   ├── src/pages/     # 7 pages (Dashboard, Agents, Workflows, Runs, Providers, Tools, Channels)
-│   ├── src/components/# UI kit + AgentBuilder + WorkflowCanvas + MonitorPanel + ToolBuilder
-│   └── src/api/       # TanStack Query hooks + auth fetch client
-├── templates/         # 3 pre-built workflow JSON templates
-├── PLAN/              # Architecture, roadmap, tech stack docs
-└── docker-compose.yml
+🌸 Orchid
+⚡ Providers  →  🔧 Tools  →  🤖 Agents  →  🔀 Workflows  →  📡 Channels  →  ▶️ Runs  →  ⚙️ Settings
 ```
 
-## API Summary
-
-| Group | Description |
-|-------|-------------|
-| `/agents` | CRUD for AI agents |
-| `/workflows` | CRUD for workflow definitions |
-| `/runs` | Trigger + status + event history |
-| `/ws/runs/{id}` | Live event stream |
-| `/templates` | Pre-built workflow templates |
-| `/providers` | LLM provider config (encrypted API keys) |
-| `/tools` | Custom tool definitions |
-| `/channels` | Telegram webhook integration |
-| `/health` | Health check (public) |
-
-## Configuration
-
-See `.env.example` and [backend/README.md](backend/README.md) for all env vars.
-
-| Key Variable | Description |
-|-------------|-------------|
-| `GEMINI_API_KEY` | Google Gemini API key |
-| `CEREBRA_API_KEY` | API key for auth (empty = no auth) |
-| `ENCRYPTION_KEY` | Encrypts provider API keys at rest |
-
-## Security
-
-- **Auth**: Bearer token on all routes (opt-in via `CEREBRA_API_KEY`)
-- **Encryption**: Provider API keys encrypted with Fernet at rest
-- **SSRF**: DNS resolution before private IP check on `http_request` tool
-- **Safe eval**: AST-based calculator, no `eval()`
-- **CORS**: Configurable origins
-- **Sanitized errors**: No internal details leaked to LLM
+The sidebar order is the onboarding order. First-time users see a 5-step setup guide on the Dashboard.
 
 ## Docs
 
 - [Backend README](backend/README.md) — full API reference, security, config
 - [Frontend README](frontend/README.md) — component docs, theming, build
 - [Developer Guide](DEVELOPER_GUIDE.md) — setup, testing, adding tools/channels
-- [PLAN/ARCHITECTURE.md](PLAN/ARCHITECTURE.md) — system design, data models
+- [Project Roadmap](PLAN/ROADMAP.md) — build phases, UX plan, tech stack reasoning
+- [Architecture](PLAN/ARCHITECTURE.md) — system design, data models, testing strategy
+- [Tech Stack](PLAN/TECHSTACK.md) — technology justifications
+- [Checklist](CHECKLIST.md) — bugs, fixes, remaining items
