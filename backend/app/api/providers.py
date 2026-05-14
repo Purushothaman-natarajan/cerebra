@@ -5,11 +5,36 @@ from app.db import get_db
 from app.services import provider_service
 
 PRESETS: dict[str, dict] = {
-    "openai": {"base_url": "https://api.openai.com/v1"},
-    "gemini": {"base_url": "https://generativelanguage.googleapis.com/v1beta"},
-    "anthropic": {"base_url": "https://api.anthropic.com/v1"},
-    "ollama": {"base_url": "http://localhost:11434/v1"},
-    "openrouter": {"base_url": "https://openrouter.ai/api/v1"},
+    "openai": {
+        "base_url": "https://api.openai.com/v1",
+        "name": "OpenAI",
+        "key_hint": "sk-...",
+        "key_example": "sk-proj-3aF8kD9mN2pQ7rX5vB1wJ4cL6nM0zS8t",
+    },
+    "gemini": {
+        "base_url": "https://generativelanguage.googleapis.com/v1beta",
+        "name": "Google Gemini",
+        "key_hint": "AIza...",
+        "key_example": "AIzaSyCb8mN3pQ7rX5vB1wJ4cL6nM0zS8tD9fG2hK",
+    },
+    "anthropic": {
+        "base_url": "https://api.anthropic.com/v1",
+        "name": "Anthropic",
+        "key_hint": "sk-ant-...",
+        "key_example": "sk-ant-auth03aF8kD9mN2pQ7rX5vB1wJ4cL6nM",
+    },
+    "ollama": {
+        "base_url": "http://localhost:11434/v1",
+        "name": "Ollama (Local)",
+        "key_hint": "No key needed",
+        "key_example": "",
+    },
+    "openrouter": {
+        "base_url": "https://openrouter.ai/api/v1",
+        "name": "OpenRouter",
+        "key_hint": "sk-or-...",
+        "key_example": "sk-or-v1-3aF8kD9mN2pQ7rX5vB1wJ4cL6nM0zS8t",
+    },
 }
 
 router = APIRouter(prefix="/providers", tags=["providers"])
@@ -99,4 +124,13 @@ async def test_connection(body: dict):
 
 @router.get("/presets")
 async def list_presets():
-    return [{"type": k, "label": k.title(), "base_url": v["base_url"]} for k, v in PRESETS.items()]
+    return [
+        {
+            "type": k,
+            "label": v.get("name", k.title()),
+            "base_url": v["base_url"],
+            "key_hint": v.get("key_hint", ""),
+            "key_example": v.get("key_example", ""),
+        }
+        for k, v in PRESETS.items()
+    ]

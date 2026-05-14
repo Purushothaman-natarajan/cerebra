@@ -5,7 +5,7 @@ import { apiFetch } from "./client"
 export interface LLMProvider { id: string; name: string; provider_type: string; base_url: string; models: string[]; api_key?: string; is_active: boolean; created_at: string }
 export interface ProviderFormData { name: string; provider_type: string; base_url: string; api_key?: string; models?: string[]; is_active?: boolean }
 export interface AvailableModel { model: string; provider_name: string; provider_type: string; provider_id: string }
-export interface Preset { type: string; label: string; base_url: string }
+export interface Preset { type: string; label: string; base_url: string; key_hint?: string; key_example?: string }
 
 const fetchProviders = () => apiFetch<LLMProvider[]>("/providers")
 const createProvider = (data: ProviderFormData) => apiFetch<LLMProvider>("/providers", { method: "POST", body: JSON.stringify(data) })
