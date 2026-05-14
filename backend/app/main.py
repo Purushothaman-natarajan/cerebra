@@ -16,7 +16,7 @@ from app.api import agents, channels, providers, runs, templates, tools, workflo
 from app.auth import verify_api_key
 from app.config import settings
 from app.db import Base, engine
-from app.ratelimit import rate_limit_middleware
+from app.ratelimit import limit_middleware
 
 
 @asynccontextmanager
@@ -48,7 +48,7 @@ async def auth_middleware(request, call_next):
     response = await verify_api_key(request)
     if response:
         return response
-    return await rate_limit_middleware(request, call_next)
+    return await limit_middleware(request, call_next)
 
 
 app.include_router(agents.router)

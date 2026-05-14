@@ -1,7 +1,7 @@
-"""In-memory rate limiting middleware using sliding window counters.
+"""In-memory rate limiting and request size middleware.
 
-No external dependencies. Limits are per-IP-address and reset on server restart.
-Supports different limits for different path patterns.
+Rate limiting uses a sliding window counter per IP per path.
+Request size limit prevents oversized payloads.
 """
 
 import time
@@ -11,11 +11,12 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 _RATE_LIMITS: dict[str, tuple[int, int]] = {
-    "/runs": (10, 60),       # 10 requests per 60 seconds for LLM runs
-    "default": (100, 60),    # 100 requests per 60 seconds for other endpoints
+    "/runs": (10, 60),
+    "default": (100, 60),
 }
 
 _PUBLIC_PATHS = {"/health", "/docs", "/redoc", "/openapi.json"}
+_MAX_BODY_SIZE = 5 * 1024 * 1024  # 5 MB
 
 _window: dict[str, list[float]] = defaultdict(list)
 
@@ -27,15 +28,24 @@ def _get_limit(path: str) -> tuple[int, int]:
     return _RATE_LIMITS["default"]
 
 
-async def rate_limit_middleware(request: Request, call_next):
-    """Check rate limits before passing request to the next handler.
+async def limit_middleware(request: Request, call_next):
+    """Check request body size and rate limits before passing to handler.
 
-    Returns 429 Too Many Requests if the client exceeds the limit.
+    Returns 413 if body too large, 429 if rate limited.
     """
     path = request.url.path
     if path in _PUBLIC_PATHS:
         return await call_next(request)
 
+    # Body size check
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > _MAX_BODY_SIZE:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": "Request body too large. Maximum size is 5 MB."},
+        )
+
+    # Rate limit
     client_ip = request.client.host if request.client else "unknown"
     max_req, window_sec = _get_limit(path)
     now = time.time()

@@ -14,9 +14,17 @@ from app.bus import subscribe
 router = APIRouter()
 
 
+_VALID_ORIGINS = {"http://localhost:5173", "http://localhost:8000", "http://localhost:3000"}
+
+
 @router.websocket("/ws/runs/{run_id}")
 async def run_logs(websocket: WebSocket, run_id: str):
     """Stream run events to the connected WebSocket client in real-time."""
+    origin = websocket.headers.get("origin", "")
+    if origin and origin not in _VALID_ORIGINS and "localhost" not in origin:
+        await websocket.close(code=4001, reason="Origin not allowed")
+        return
+
     if not await verify_ws_key(websocket):
         return
 

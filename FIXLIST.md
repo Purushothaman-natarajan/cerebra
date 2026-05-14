@@ -46,18 +46,18 @@
 - [x] **S1**: Encrypt provider API keys at rest — Fernet encryption via `cryptography`, masked in API responses
 - [x] **S2**: Add API key authentication guard — `Authorization: Bearer` middleware on all routes + WebSocket token param
 
-### P1 — High
+### P1 — High ✓
 
 - [x] **S3**: Fix SSRF DNS bypass — async DNS resolution before checking private IPs
-- [ ] **S4**: Add rate limiting (stricter on `/runs`)
+- [x] **S4**: Add rate limiting — in-memory sliding window, 10/min on /runs, 100/min on other
 - [x] **S5**: Add security headers to nginx (X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
 
 ### P2 — Medium ✓
 
 - [x] **S6**: Sanitize `web_search` error messages — generic "Search failed"
 - [x] **S7**: Sanitize `web_crawler` error messages — generic error message
-- [ ] **S8**: Add HTTPS support to nginx (SSL config block)
-- [ ] **S9**: Add Redis password to docker-compose + config
+- [x] **S8**: Add HTTPS config block to nginx (commented out, ready for certs)
+- [x] **S9**: Add Redis password support — `REDIS_PASSWORD` env var, docker-compose uses `--requirepass`
 - [x] **S10**: Sanitize calculator error messages — generic "Error: Invalid expression"
 
 ### P3 — Low ✓
