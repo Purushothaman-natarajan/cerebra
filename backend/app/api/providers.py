@@ -86,38 +86,63 @@ async def list_available_models(db: AsyncSession = Depends(get_db)):
 
 @router.post("/test")
 async def test_connection(body: dict):
-    """Test a provider connection by making a lightweight API call."""
+    """Test a provider connection. Returns available models on success."""
     import httpx
-    base_url = body.get("base_url", "")
+    base_url = body.get("base_url", "").rstrip("/")
     api_key = body.get("api_key", "")
     provider_type = body.get("provider_type", "custom")
 
     if not base_url:
         raise HTTPException(400, "Base URL is required")
-    if not api_key and provider_type != "ollama":
+    if not api_key and provider_type not in ("ollama", "custom"):
         raise HTTPException(400, "API key is required for this provider type")
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
+            headers = {}
+
             if provider_type == "openai":
-                resp = await client.get(f"{base_url.rstrip('/')}/models", headers={"Authorization": f"Bearer {api_key}"})
+                headers["Authorization"] = f"Bearer {api_key}"
+                resp = await client.get(f"{base_url}/models", headers=headers)
                 resp.raise_for_status()
-                models = [m["id"] for m in resp.json().get("data", [])[:5]]
+                models = [m["id"] for m in resp.json().get("data", [])[:10]]
+
             elif provider_type == "gemini":
-                resp = await client.get(f"{base_url.rstrip('/')}/models", params={"key": api_key})
+                # Gemini uses X-goog-api-key header (not Authorization Bearer)
+                headers["X-goog-api-key"] = api_key
+                resp = await client.get(f"{base_url}/models", headers=headers)
                 resp.raise_for_status()
-                models = [m["name"].split("/")[-1] for m in resp.json().get("models", [])[:5]]
+                models = [m["name"].split("/")[-1] for m in resp.json().get("models", [])[:10]]
+
+            elif provider_type == "anthropic":
+                headers["x-api-key"] = api_key
+                headers["anthropic-version"] = "2023-06-01"
+                resp = await client.get(f"{base_url}/models", headers=headers)
+                resp.raise_for_status()
+                models = [m["id"] for m in resp.json().get("data", [])[:10]]
+
             elif provider_type == "ollama":
-                resp = await client.get(f"{base_url.rstrip('/')}/tags")
+                resp = await client.get(f"{base_url}/tags")
                 resp.raise_for_status()
-                models = [m["name"] for m in resp.json().get("models", [])[:5]]
+                models = [m["name"] for m in resp.json().get("models", [])[:10]]
+
             else:
-                resp = await client.get(f"{base_url.rstrip('/')}/models", headers={"Authorization": f"Bearer {api_key}"} if api_key else {})
-                models = [m.get("id", m.get("name", "")) for m in resp.json().get("data", resp.json().get("models", []))[:5]]
+                if api_key:
+                    headers["Authorization"] = f"Bearer {api_key}"
+                resp = await client.get(f"{base_url}/models", headers=headers)
+                data = resp.json()
+                raw = data.get("data") or data.get("models") or []
+                models = [m.get("id") or m.get("name", "") for m in raw[:10]]
 
             return {"ok": True, "models": models}
+
     except httpx.HTTPStatusError as e:
-        raise HTTPException(400, f"Connection failed: HTTP {e.response.status_code}")
+        detail = f"HTTP {e.response.status_code}"
+        try:
+            detail += f": {e.response.json().get('error', {}).get('message', '')}"
+        except Exception:
+            detail += f": {e.response.text[:200]}"
+        raise HTTPException(400, f"Connection failed: {detail}")
     except httpx.RequestError as e:
         raise HTTPException(400, f"Connection failed: {e}")
 
