@@ -1,16 +1,16 @@
-/** Agents screen — workers with roles, models, tools, memory. */
+/** Agents page — responsive, with error state, loading skeletons, and empty state. */
 
 import { useEffect } from "react"
-import { useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent } from "../api/agents"
-import type { AgentFormData } from "../api/agents"
-import { useAgentStore } from "../store/agentStore"
-import AgentCard from "../components/AgentBuilder/AgentCard"
-import AgentForm from "../components/AgentBuilder/AgentForm"
-import { Button, Empty, SkeletonCard } from "../components/ui"
-import { Bot } from "lucide-react"
+import { useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent } from "@/api/agents"
+import type { AgentFormData } from "@/api/agents"
+import { useAgentStore } from "@/store/agentStore"
+import AgentCard from "@/components/AgentBuilder/AgentCard"
+import AgentForm from "@/components/AgentBuilder/AgentForm"
+import { Button, Empty, SkeletonCard } from "@/components/ui"
+import { Bot, Plus } from "lucide-react"
 
 export default function AgentsPage() {
-  const { data: agents, isLoading } = useAgents()
+  const { data: agents, isLoading, isError } = useAgents()
   const createAgent = useCreateAgent()
   const updateAgent = useUpdateAgent()
   const deleteAgent = useDeleteAgent()
@@ -18,7 +18,7 @@ export default function AgentsPage() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "n" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); openForm() }
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") { e.preventDefault(); openForm() }
     }
     document.addEventListener("keydown", handler)
     return () => document.removeEventListener("keydown", handler)
@@ -30,21 +30,25 @@ export default function AgentsPage() {
     closeForm()
   }
 
-  const handleDelete = (id: string) => { if (confirm("Delete this agent?")) deleteAgent.mutate(id) }
-
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">🤖 Agents</h1>
-          <p className="text-sm text-muted mt-1">The workers in your workflows. Each has a role, model, and tools.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Agents</h1>
+          <p className="text-sm text-muted mt-0.5">The workers in your workflows. Each has a role, model, and tools.</p>
         </div>
-        <Button onClick={() => openForm()}>+ New Agent</Button>
+        <Button onClick={() => openForm()} className="shrink-0 gap-2"><Plus className="w-4 h-4" /> New Agent</Button>
       </div>
 
       {isFormOpen && (
-        <div className="mb-6">
+        <div className="animate-in">
           <AgentForm initial={editingAgent?.data} onSave={handleSave} onCancel={closeForm} />
+        </div>
+      )}
+
+      {isError && (
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-sm text-rose-700 dark:text-rose-400">
+          Failed to load agents. Make sure the backend is running.
         </div>
       )}
 
@@ -55,16 +59,14 @@ export default function AgentsPage() {
       )}
 
       {!isLoading && agents?.length === 0 && (
-        <Empty icon={<Bot className="w-12 h-12" />} title="No agents yet" description="Create your first agent. Agents are LLM-powered workers with tools and guardrails." action={{ label: "Create Agent", onClick: () => openForm() }} />
+        <Empty icon={<Bot className="w-12 h-12" />} title="No agents yet" description="Create your first agent." action={{ label: "Create Agent", onClick: () => openForm() }} />
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {agents?.map((agent) => (
-          <AgentCard
-            key={agent.id}
-            agent={agent}
+          <AgentCard key={agent.id} agent={agent}
             onEdit={() => openForm({ id: agent.id, data: { ...agent, guardrails: { blocked_topics: agent.guardrails?.blocked_topics ?? [], max_tokens: agent.guardrails?.max_tokens ?? 4096 } } })}
-            onDelete={() => handleDelete(agent.id)}
+            onDelete={() => { if (confirm("Delete this agent?")) deleteAgent.mutate(agent.id) }}
           />
         ))}
       </div>

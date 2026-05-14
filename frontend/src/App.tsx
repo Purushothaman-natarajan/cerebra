@@ -39,7 +39,10 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
       )}
       <aside className={`${collapsed ? "-translate-x-full" : "translate-x-0"} fixed lg:static z-50 w-60 h-full border-r border-border bg-card shrink-0 flex flex-col transition-all duration-300 ease-in-out`}>
         <div className="flex items-center justify-between p-5 pb-3">
-          <span className="text-lg font-bold tracking-tight" style={{ color: "var(--accent)" }}>🌸 Orchid</span>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: "var(--accent)" }}>O</div>
+            <span className="text-lg font-bold tracking-tight" style={{ color: "var(--accent)" }}>rchid</span>
+          </div>
           <button onClick={onToggle} className="lg:hidden p-1.5 rounded-lg hover:bg-accent-soft transition-colors">
             <X className="w-4 h-4" />
           </button>
@@ -85,7 +88,10 @@ function AppContent() {
           <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded-lg hover:bg-accent-soft transition-colors">
             <Menu className="w-5 h-5" />
           </button>
-          <span className="text-sm font-bold tracking-tight" style={{ color: "var(--accent)" }}>🌸 Orchid</span>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md flex items-center justify-center text-white text-[10px] font-bold" style={{ background: "var(--accent)" }}>O</div>
+            <span className="text-sm font-bold tracking-tight" style={{ color: "var(--accent)" }}>rchid</span>
+          </div>
         </div>
         <div className="p-4 sm:p-6">
           <Routes>

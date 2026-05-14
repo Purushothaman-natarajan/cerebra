@@ -159,7 +159,7 @@ function Flow({
             e.dataTransfer.setData("application/reactflow", "agent")
             e.dataTransfer.effectAllowed = "move"
           }}
-          className="px-3 py-2 bg-blue-600 text-white text-xs rounded-lg cursor-grab active:cursor-grabbing hover:bg-blue-700"
+          className="px-3 py-2 text-white text-xs rounded-lg cursor-grab active:cursor-grabbing transition-colors" style={{ background: "var(--accent)" }}
         >
           + Agent
         </div>
@@ -169,7 +169,7 @@ function Flow({
             e.dataTransfer.setData("application/reactflow", "router")
             e.dataTransfer.effectAllowed = "move"
           }}
-          className="px-3 py-2 bg-amber-600 text-white text-xs rounded-lg cursor-grab active:cursor-grabbing hover:bg-amber-700"
+          className="px-3 py-2 text-white text-xs rounded-lg cursor-grab active:cursor-grabbing transition-colors opacity-85" style={{ background: "var(--accent)" }}
         >
           + Router
         </div>
