@@ -1,11 +1,13 @@
+/** Dashboard — stats + onboarding + quick actions + recent runs. Responsive grid. */
+
 import { useNavigate } from "react-router-dom"
-import { Zap, Wrench, Bot, GitBranch } from "lucide-react"
-import { useProviders } from "../api/providers"
-import { useTools } from "../api/tools"
-import { useAgents } from "../api/agents"
-import { useWorkflows } from "../api/workflows"
-import { useRuns } from "../api/runs"
-import { Card, Badge, Skeleton, Button } from "../components/ui"
+import { Zap, Wrench, Bot, GitBranch, Activity, ArrowRight } from "lucide-react"
+import { useProviders } from "@/api/providers"
+import { useTools } from "@/api/tools"
+import { useAgents } from "@/api/agents"
+import { useWorkflows } from "@/api/workflows"
+import { useRuns } from "@/api/runs"
+import { Card, Badge, Skeleton } from "@/components/ui"
 
 export default function Dashboard() {
   const { data: providers } = useProviders()
@@ -16,98 +18,110 @@ export default function Dashboard() {
   const navigate = useNavigate()
 
   const recentRuns = runs?.slice(0, 5) ?? []
+  const hasData = (providers?.length ?? 0) > 0 || (agents?.length ?? 0) > 0
 
   const stats = [
-    { icon: Zap, label: "Providers", count: providers?.length, color: "text-accent", bg: "bg-accent-soft", link: "/providers" },
-    { icon: Wrench, label: "Tools", count: tools?.length, color: "text-amber-600", bg: "bg-amber-100 dark:bg-amber-900/30", link: "/tools" },
-    { icon: Bot, label: "Agents", count: agents?.length, color: "text-accent", bg: "bg-accent-soft", link: "/agents" },
-    { icon: GitBranch, label: "Workflows", count: workflows?.length, color: "text-emerald-600", bg: "bg-emerald-100 dark:bg-emerald-900/30", link: "/workflows" },
+    { icon: Zap, label: "Providers", count: providers?.length, color: "var(--accent)", link: "/providers" },
+    { icon: Wrench, label: "Tools", count: tools?.length, color: "var(--accent)", link: "/tools" },
+    { icon: Bot, label: "Agents", count: agents?.length, color: "var(--accent)", link: "/agents" },
+    { icon: GitBranch, label: "Workflows", count: workflows?.length, color: "var(--accent)", link: "/workflows" },
   ]
 
-  const hasData = (providers?.length ?? 0) > 0 || (agents?.length ?? 0) > 0 || (workflows?.length ?? 0) > 0
-
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold text-foreground mb-6">🌸 Dashboard</h1>
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Dashboard</h1>
+      </div>
 
+      {/* Onboarding */}
       {!hasData && (
-        <div className="mb-8 p-6 rounded-xl border border-accent bg-accent-soft/50">
-          <h2 className="text-lg font-semibold text-foreground mb-3">Welcome to Orchid 🌸</h2>
-          <p className="text-sm text-muted mb-4">Build your first multi-agent workflow in 5 steps:</p>
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+        <div className="p-6 rounded-2xl border border-accent/30 bg-accent-soft/30 backdrop-blur-sm animate-in">
+          <h2 className="text-lg font-semibold text-foreground mb-1">Welcome to Orchid 🌸</h2>
+          <p className="text-sm text-muted mb-5">Build your first multi-agent workflow in 5 steps:</p>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
-              { step: 1, label: "Add a provider", desc: "Your LLM API key", icon: "⚡", link: "/providers" },
-              { step: 2, label: "Configure tools", desc: "What agents can do", icon: "🔧", link: "/tools" },
-              { step: 3, label: "Create agents", desc: "Who does the work", icon: "🤖", link: "/agents" },
-              { step: 4, label: "Build a workflow", desc: "How they collaborate", icon: "🔀", link: "/workflows" },
-              { step: 5, label: "Add a channel", desc: "Talk to your agents", icon: "📡", link: "/channels" },
+              { step: 1, label: "Add a provider", icon: "⚡", link: "/providers" },
+              { step: 2, label: "Configure tools", icon: "🔧", link: "/tools" },
+              { step: 3, label: "Create agents", icon: "🤖", link: "/agents" },
+              { step: 4, label: "Build a workflow", icon: "🔀", link: "/workflows" },
+              { step: 5, label: "Add a channel", icon: "📡", link: "/channels" },
             ].map((s) => (
-              <button key={s.step} onClick={() => navigate(s.link)} className="p-3 rounded-lg border border-border bg-card hover:border-accent transition-colors text-left">
+              <button key={s.step} onClick={() => navigate(s.link)}
+                className="p-3 rounded-xl border border-border bg-card hover:border-accent/50 hover:shadow-soft transition-all duration-200 text-left group"
+              >
                 <span className="text-lg">{s.icon}</span>
-                <p className="text-sm font-medium text-foreground mt-1">{s.label}</p>
-                <p className="text-[10px] text-muted">{s.desc}</p>
+                <p className="text-sm font-medium text-foreground mt-1 group-hover:text-accent transition-colors">{s.label}</p>
+                <p className="text-[10px] text-muted">Step {s.step}</p>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {stats.map((s) => (
-          <Card key={s.label} hover className="flex items-center gap-4 cursor-pointer" onClick={() => navigate(s.link)}>
-            <div className={`p-3 rounded-xl ${s.bg} ${s.color}`}>
-              <s.icon className="w-5 h-5" />
+          <Card key={s.label} hover className="flex items-center gap-3 sm:gap-4 cursor-pointer p-4" onClick={() => navigate(s.link)}>
+            <div className="p-2.5 sm:p-3 rounded-xl bg-accent-soft shrink-0" style={{ color: s.color }}>
+              <s.icon className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{s.count ?? <Skeleton className="h-8 w-12 inline-block" />}</p>
-              <p className="text-xs text-muted">{s.label}</p>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold text-foreground truncate">{s.count ?? <Skeleton className="h-7 w-10 inline-block align-middle" />}</p>
+              <p className="text-xs text-muted truncate">{s.label}</p>
             </div>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Quick actions + Recent runs */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card>
-          <h2 className="font-semibold text-foreground mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <Button variant="secondary" className="justify-start" onClick={() => navigate("/providers")}>
-              <Zap className="w-4 h-4" /> Add Provider
-            </Button>
-            <Button variant="secondary" className="justify-start" onClick={() => navigate("/tools")}>
-              <Wrench className="w-4 h-4" /> New Tool
-            </Button>
-            <Button variant="secondary" className="justify-start" onClick={() => navigate("/agents")}>
-              <Bot className="w-4 h-4" /> New Agent
-            </Button>
-            <Button variant="secondary" className="justify-start" onClick={() => navigate("/workflows")}>
-              <GitBranch className="w-4 h-4" /> New Workflow
-            </Button>
+          <h2 className="font-semibold text-foreground mb-4 text-sm">Quick Actions</h2>
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            {[
+              { icon: Zap, label: "Add Provider", link: "/providers" },
+              { icon: Wrench, label: "New Tool", link: "/tools" },
+              { icon: Bot, label: "New Agent", link: "/agents" },
+              { icon: GitBranch, label: "New Workflow", link: "/workflows" },
+            ].map((a) => (
+              <button key={a.label} onClick={() => navigate(a.link)}
+                className="flex items-center gap-2 sm:gap-3 p-3 rounded-xl border border-border hover:border-accent/50 hover:bg-accent-soft transition-all duration-200 text-left group"
+              >
+                <div className="p-2 rounded-lg bg-accent-soft shrink-0" style={{ color: "var(--accent)" }}>
+                  <a.icon className="w-4 h-4" />
+                </div>
+                <span className="text-xs sm:text-sm font-medium text-foreground group-hover:text-accent transition-colors">{a.label}</span>
+              </button>
+            ))}
           </div>
         </Card>
 
         <Card>
-          <h2 className="font-semibold text-foreground mb-4">Recent Runs</h2>
+          <h2 className="font-semibold text-foreground mb-4 text-sm">Recent Runs</h2>
           {recentRuns.length === 0 ? (
-            <p className="text-sm text-muted py-4 text-center">No runs yet.</p>
+            <div className="text-center py-8">
+              <Activity className="w-8 h-8 text-muted mx-auto mb-2 opacity-40" />
+              <p className="text-sm text-muted">No runs yet</p>
+            </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {recentRuns.map((run) => (
-                <div key={run.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-muted">{run.id.slice(0, 8)}</span>
-                    <Badge variant={run.status === "completed" ? "success" : run.status === "running" ? "info" : run.status === "failed" ? "danger" : "default"}>
+                <div key={run.id} className="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-accent-soft transition-colors cursor-pointer" onClick={() => navigate("/runs")}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-mono text-muted shrink-0">#{run.id.slice(0, 6)}</span>
+                    <Badge variant={run.status === "completed" ? "success" : run.status === "running" ? "info" : run.status === "failed" ? "danger" : "default"} className="shrink-0">
                       {run.status}
                     </Badge>
                   </div>
-                  <span className="text-[10px] text-muted">{run.started_at ? new Date(run.started_at).toLocaleDateString() : ""}</span>
+                  <span className="text-[10px] text-muted shrink-0">{run.started_at ? new Date(run.started_at).toLocaleDateString() : ""}</span>
                 </div>
               ))}
             </div>
           )}
           {recentRuns.length > 0 && (
-            <Button variant="ghost" size="sm" className="mt-3 w-full" onClick={() => navigate("/runs")}>
-              View all runs
-            </Button>
+            <button onClick={() => navigate("/runs")} className="mt-3 w-full flex items-center justify-center gap-1 text-xs text-muted hover:text-accent transition-colors py-2 rounded-lg hover:bg-accent-soft">
+              View all runs <ArrowRight className="w-3 h-3" />
+            </button>
           )}
         </Card>
       </div>

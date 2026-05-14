@@ -4,15 +4,60 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
-  background: var(--bg-primary);
-  color: var(--fg-primary);
-  -webkit-font-smoothing: antialiased;
+@layer base {
+  body {
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    background: var(--bg-primary);
+    color: var(--fg-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
-.glass {
-  background: color-mix(in srgb, var(--bg-card) 70%, transparent);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
+@layer components {
+  .glass {
+    background: color-mix(in srgb, var(--bg-card) 70%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+  }
+  .glass-strong {
+    background: color-mix(in srgb, var(--bg-card) 85%, transparent);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+  }
 }
+
+@layer utilities {
+  .animate-in {
+    animation: fadeInUp 0.3s ease-out;
+  }
+  .slide-in-from-right {
+    animation: slideInRight 0.3s ease-out;
+  }
+  .fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }

@@ -1,7 +1,7 @@
-/** Root layout: sidebar navigation + themed content area with error boundaries. */
+/** Root layout: responsive sidebar + themed content with page transitions. */
 
-import { Component, type ReactNode, useState } from "react"
-import { Routes, Route, NavLink } from "react-router-dom"
+import { useState } from "react"
+import { Routes, Route, NavLink, useLocation } from "react-router-dom"
 import { Zap, Wrench, Bot, GitBranch, Radio, Activity, Settings, Menu, X } from "lucide-react"
 import { ThemeProvider } from "@/contexts/ThemeContext"
 import AgentsPage from "@/pages/AgentsPage"
@@ -14,29 +14,10 @@ import SettingsPage from "@/pages/SettingsPage"
 import Dashboard from "@/pages/Dashboard"
 import ThemeToggle from "@/components/ui/ThemeToggle"
 import AccentPicker from "@/components/ui/AccentPicker"
-import { Button } from "@/components/ui"
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
-  state = { error: null as Error | null }
-  static getDerivedStateFromError(error: Error) { return { error } }
-  render() {
-    if (this.state.error) {
-      return (
-        <div className="flex items-center justify-center h-full p-8">
-          <div className="text-center">
-            <p className="text-rose-500 mb-2">Something went wrong</p>
-            <p className="text-sm text-muted mb-4">{this.state.error.message}</p>
-            <Button onClick={() => this.setState({ error: null })}>Retry</Button>
-          </div>
-        </div>
-      )
-    }
-    return this.props.children
-  }
-}
-
-function Page({ children }: { children: ReactNode }) {
-  return <ErrorBoundary>{children}</ErrorBoundary>
+function Page({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
+  return <div key={location.pathname} className="animate-in">{children}</div>
 }
 
 const navItems = [
@@ -50,40 +31,44 @@ const navItems = [
 ]
 
 function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  const location = useLocation()
   return (
     <>
       {!collapsed && (
-        <div className="fixed inset-0 bg-black/30 z-40 lg:hidden" onClick={onToggle} />
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden" onClick={onToggle} />
       )}
-      <nav className={`${collapsed ? "-translate-x-full" : "translate-x-0"} fixed lg:static z-50 w-56 border-r border-border bg-card shrink-0 flex flex-col transition-transform duration-200`}>
-        <div className="flex items-center justify-between p-4">
-          <span className="text-lg font-bold" style={{ color: "var(--accent)" }}>🌸 Orchid</span>
-          <button onClick={onToggle} className="lg:hidden p-1 rounded hover:bg-accent-soft">
+      <aside className={`${collapsed ? "-translate-x-full" : "translate-x-0"} fixed lg:static z-50 w-60 h-full border-r border-border bg-card shrink-0 flex flex-col transition-all duration-300 ease-in-out`}>
+        <div className="flex items-center justify-between p-5 pb-3">
+          <span className="text-lg font-bold tracking-tight" style={{ color: "var(--accent)" }}>🌸 Orchid</span>
+          <button onClick={onToggle} className="lg:hidden p-1.5 rounded-lg hover:bg-accent-soft transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="flex-1 px-3 space-y-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
-                  isActive ? "font-medium" : "text-muted hover:text-foreground hover:bg-accent-soft"
-                }`
-              }
-              style={({ isActive }) => (isActive ? { background: "var(--accent-soft)", color: "var(--accent)" } : {})}
-            >
-              <item.icon className="w-4 h-4" />
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
-        <div className="p-3 border-t border-border flex items-center justify-between">
+        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.to || (item.to !== "/" && location.pathname.startsWith(item.to))
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => { if (window.innerWidth < 1024) onToggle() }}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
+                  isActive ? "font-medium shadow-sm" : "text-muted hover:text-foreground hover:bg-accent-soft"
+                }`}
+                style={isActive ? { background: "var(--accent-soft)", color: "var(--accent)" } : {}}
+              >
+                <item.icon className="w-4 h-4 shrink-0" />
+                <span>{item.label}</span>
+                {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} />}
+              </NavLink>
+            )
+          })}
+        </nav>
+        <div className="p-4 border-t border-border flex items-center justify-between mt-auto">
           <AccentPicker />
           <ThemeToggle />
         </div>
-      </nav>
+      </aside>
     </>
   )
 }
@@ -95,22 +80,25 @@ function AppContent() {
     <div className="min-h-screen flex" style={{ background: "var(--bg-primary)" }}>
       <Sidebar collapsed={!sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       <main className="flex-1 overflow-auto min-w-0" style={{ background: "var(--bg-secondary)" }}>
-        <div className="lg:hidden flex items-center gap-2 p-3 border-b border-border bg-card">
-          <button onClick={() => setSidebarOpen(true)} className="p-1 rounded hover:bg-accent-soft">
+        {/* Mobile header */}
+        <div className="lg:hidden flex items-center gap-3 p-4 border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-30">
+          <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded-lg hover:bg-accent-soft transition-colors">
             <Menu className="w-5 h-5" />
           </button>
-          <span className="text-sm font-bold" style={{ color: "var(--accent)" }}>🌸 Orchid</span>
+          <span className="text-sm font-bold tracking-tight" style={{ color: "var(--accent)" }}>🌸 Orchid</span>
         </div>
-        <Routes>
-          <Route path="/" element={<Page><Dashboard /></Page>} />
-          <Route path="/providers" element={<Page><ProvidersPage /></Page>} />
-          <Route path="/tools" element={<Page><ToolsPage /></Page>} />
-          <Route path="/agents" element={<Page><AgentsPage /></Page>} />
-          <Route path="/workflows" element={<Page><WorkflowsPage /></Page>} />
-          <Route path="/channels" element={<Page><ChannelsPage /></Page>} />
-          <Route path="/runs" element={<Page><RunsPage /></Page>} />
-          <Route path="/settings" element={<Page><SettingsPage /></Page>} />
-        </Routes>
+        <div className="p-4 sm:p-6">
+          <Routes>
+            <Route path="/" element={<Page><Dashboard /></Page>} />
+            <Route path="/providers" element={<Page><ProvidersPage /></Page>} />
+            <Route path="/tools" element={<Page><ToolsPage /></Page>} />
+            <Route path="/agents" element={<Page><AgentsPage /></Page>} />
+            <Route path="/workflows" element={<Page><WorkflowsPage /></Page>} />
+            <Route path="/channels" element={<Page><ChannelsPage /></Page>} />
+            <Route path="/runs" element={<Page><RunsPage /></Page>} />
+            <Route path="/settings" element={<Page><SettingsPage /></Page>} />
+          </Routes>
+        </div>
       </main>
     </div>
   )
