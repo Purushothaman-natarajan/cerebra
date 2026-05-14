@@ -63,7 +63,7 @@ The sidebar order is the onboarding order. First-time users see a 5-step setup g
 | Suite | Results |
 |-------|---------|
 | Backend unit tests | **34 pass**, 4 skip (need GEMINI_API_KEY) |
-| Frontend component tests | **23 pass** (7 test files — vitest) |
+| Frontend component tests | **33 pass** (9 test files — vitest) |
 | End-to-end API test | **16/16 pass** with real Gemini API |
 | Frontend build | **0 TypeScript errors** |
 
@@ -71,14 +71,10 @@ The sidebar order is the onboarding order. First-time users see a 5-step setup g
 
 | Priority | Item | Notes |
 |----------|------|-------|
-| Low | LangGraph `llm.py` sync client | Uses `client.models.generate_content()` sync (blocks event loop). Needs `aio` fix when SDK supports it |
-| Low | `llm.py` tool calling disabled | SDK `generate_content()` does not accept `tools` or `system_instruction` params — prepended as user message instead |
-| Low | DuckDuckGo web_search | Uses undocumented lite endpoint (fragile). Replace with Tavily/SerpAPI when available |
-| Low | No schedule trigger | Workflow definition supports `trigger.type: "schedule"` but no APScheduler integration yet |
-| Low | No human-in-the-loop | `HumanNode` frontend exists, backend `human_node.py` not implemented |
-| Low | No conversation memory | `memory_enabled` field exists on agents but runtime does not implement memory persistence |
-| Low | CI/CD commented out | GitHub Actions workflow ready. Uncomment `on:` block to activate |
-| Low | Frontend chunk size | Some chunks >500KB (recharts + reactflow). Code-split with dynamic import() |
+| Low | No schedule trigger | `trigger.type: "schedule"` in model but no APScheduler |
+| Low | No human-in-the-loop | `HumanNode` frontend exists, backend `interrupt_before` not wired |
+| Low | No conversation memory | `memory_enabled` field exists but runtime ignores it |
+| Low | Frontend test coverage | Only 7 component files tested, add page-level integration tests |
 
 ## Docs
 

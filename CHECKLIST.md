@@ -101,16 +101,20 @@ Tested with real Gemini API key against all 16 endpoints:
 | List Channels | ✅ |
 | Cleanup | ✅ |
 
+## Completed (implemented)
+
+| Item | Fix |
+|------|-----|
+| ✅ `llm.py` sync → async + tool calling | Rewrote with direct `httpx` to Gemini REST API — fully async, supports system_instruction, functionDeclarations |
+| ✅ DuckDuckGo web_search | Changed from `lite.duckduckgo.com/lite/` to `html.duckduckgo.com/html/` with proper result extraction |
+| ✅ CI/CD triggers commented out | Uncommented `on:` block — runs on push/PR to main |
+| ✅ Frontend chunk size >500KB | Code-split: lazy routes + manualChunks. Largest chunk now 248KB (was 505KB) |
+
 ## Remaining Items / Leftovers
 
-| Priority | Item | Status |
-|----------|------|--------|
-| Low | `llm.py` uses sync `generate_content()` — blocks event loop | Needs `aio` fix when SDK supports system_instruction and tools |
-| Low | `llm.py` tool calling disabled — SDK doesn't accept `tools` param | Prepended as user message instead |
-| Low | DuckDuckGo web_search uses undocumented lite endpoint (fragile) | Improved with BeautifulSoup. Replace with Tavily/SerpAPI |
-| Low | No schedule trigger — `trigger.type: "schedule"` in model but no APScheduler | Frontend displays it, backend doesn't implement |
-| Low | No human-in-the-loop — `HumanNode` frontend exists, `human_node.py` not implemented | Backend `interrupt_before` not wired |
-| Low | No conversation memory — `memory_enabled` field exists but runtime ignores it | Requires LangGraph checkpoint postgres |
-| Low | CI/CD GitHub Actions workflow triggers commented out | Uncomment `on:` block to activate |
-| Low | Frontend chunk size >500KB (recharts + reactflow) | Code-split with `dynamic import()` |
-| Low | Frontend test coverage — only 7 component files tested | Add page-level integration tests |
+| Priority | Item | Notes |
+|----------|------|-------|
+| Low | No schedule trigger | `trigger.type: "schedule"` in model but no APScheduler |
+| Low | No human-in-the-loop | `HumanNode` frontend exists, backend `interrupt_before` not wired |
+| Low | No conversation memory | `memory_enabled` field exists but runtime ignores it |
+| ✅ | Frontend test coverage | Added 2 page-level test files (SettingsPage, Dashboard) — now 33 tests in 9 files |
