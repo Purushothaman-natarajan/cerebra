@@ -1,13 +1,16 @@
-"""Pydantic schemas with per-field examples and full response examples for Swagger."""
+"""Pydantic schemas with per-field examples and full response examples for Swagger.
 
-from pydantic import BaseModel, Field
+Every model has:
+- Field(examples=[...]) for per-field example values (shown in request bodies)
+- model_config = ConfigDict(json_schema_extra={"example": ...}) for full response objects
+"""
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
-# ── Helpers ──────────────────────────────────────────────────────
-
-def _example(obj: dict):
-    """Shortcut to add a full JSON example to a model's schema."""
-    return {"json_schema_extra": {"example": obj}}
+def _example(obj):
+    """Returns a ConfigDict that adds a full JSON example to the model's OpenAPI schema."""
+    return ConfigDict(json_schema_extra={"example": obj})
 
 
 # ── Agents ───────────────────────────────────────────────────────
