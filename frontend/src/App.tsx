@@ -60,7 +60,7 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
             <X className="w-4 h-4" />
           </button>
         </div>
-        <nav className="flex-1 px-3 sm:px-5 py-2 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 px-4 sm:px-6 py-2 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.to || (item.to !== "/" && location.pathname.startsWith(item.to))
             return (
@@ -87,12 +87,14 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
   )
 }
 
-/** Normal pages: padded, scrollable content */
+/** Normal pages: padded, scrollable — each page controls its own centering */
 function StandardPage({ children }: { children: ReactNode }) {
   return (
-    <div className="p-4 sm:p-6 overflow-auto flex-1">
+    <div className="p-4 sm:p-6 overflow-auto flex-1 flex flex-col">
       <BackButton />
-      <Page>{children}</Page>
+      <div className="w-full flex-1">
+        <Page>{children}</Page>
+      </div>
     </div>
   )
 }
