@@ -1,10 +1,10 @@
-/** Providers screen — responsive cards, test connection drawer, verified badges. */
+/** Providers — LLM credentials with encrypted-at-rest privacy indicators. */
 
 import { useState } from "react"
 import { useProviders, useCreateProvider, useDeleteProvider, usePresets } from "@/api/providers"
 import type { ProviderFormData } from "@/api/providers"
 import { Button, Card, Badge, Dialog, Input, SkeletonRow } from "@/components/ui"
-import { CheckCircle, XCircle } from "lucide-react"
+import { CheckCircle, XCircle, Shield, ShieldCheck, Eye, EyeOff, Wifi } from "lucide-react"
 
 export default function ProvidersPage() {
   const { data: providers, isLoading } = useProviders()
@@ -16,6 +16,7 @@ export default function ProvidersPage() {
   const [form, setForm] = useState<ProviderFormData>({ name: "", provider_type: "custom", base_url: "", api_key: "" })
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [showKey, setShowKey] = useState(false)
 
   const applyPreset = (type: string) => {
     const p = presets?.find((pr) => pr.type === type)
@@ -31,15 +32,19 @@ export default function ProvidersPage() {
 
   const handleSave = () => {
     if (!form.name || !form.base_url) return
-    createProvider.mutate(form, { onSuccess: () => { setShowForm(false); setForm({ name: "", provider_type: "custom", base_url: "", api_key: "" }); setTestResult(null) } })
+    createProvider.mutate(form, { onSuccess: () => {
+      setShowForm(false); setForm({ name: "", provider_type: "custom", base_url: "", api_key: "" }); setTestResult(null)
+    }})
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">⚡ Providers</h1>
-          <p className="text-sm text-muted mt-0.5">Register LLM credentials once. Every agent picks from this list.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
+            Providers <Shield className="w-4 h-4 text-emerald-500" aria-label="Encrypted at rest" />
+          </h1>
+          <p className="text-sm text-muted mt-0.5">API keys are encrypted at rest. Never shared.</p>
         </div>
         <Button onClick={() => setShowForm(true)} className="shrink-0">+ Add Provider</Button>
       </div>
@@ -47,29 +52,39 @@ export default function ProvidersPage() {
       {isLoading && <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} />)}</div>}
 
       <div className="space-y-3">
-        {providers?.map((p) => (
-          <Card key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-            <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
-              <div className={`w-2.5 h-2.5 rounded-full mt-1 sm:mt-0 shrink-0 ${p.is_active ? "bg-emerald-500" : "bg-gray-300"}`} />
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-foreground">{p.name}</span>
-                  <Badge variant="info">{p.provider_type}</Badge>
-                  <Badge variant="success" className="gap-1 hidden sm:flex"><CheckCircle className="w-3 h-3" /> Verified</Badge>
+        {providers?.map((p) => {
+          const isLocal = p.provider_type === "ollama" || p.base_url.includes("localhost")
+          return (
+            <Card key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                <div className={`w-2.5 h-2.5 rounded-full mt-1 sm:mt-0 shrink-0 ${p.is_active ? "bg-emerald-500" : "bg-gray-300"}`} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium text-foreground">{p.name}</span>
+                    <Badge variant="info">{p.provider_type}</Badge>
+                    {isLocal ? (
+                      <Badge variant="warning" className="gap-1"><Wifi className="w-3 h-3" /> Self-hosted</Badge>
+                    ) : (
+                      <Badge variant="success" className="gap-1"><ShieldCheck className="w-3 h-3" /> Encrypted</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted mt-1 truncate">{p.models?.length ? p.models.slice(0, 3).join(" · ") : "No models synced"}</p>
+                  <p className="text-xs text-muted mt-0.5 font-mono truncate flex items-center gap-1.5">
+                    <Shield className="w-3 h-3 text-emerald-500" /> key: {'•'.repeat(16)}
+                  </p>
                 </div>
-                <p className="text-xs text-muted mt-1 truncate">{p.models?.length ? p.models.slice(0, 3).join(" · ") : "No models synced"}</p>
-                <p className="text-xs text-muted mt-0.5 font-mono truncate">••••••••••••••••</p>
               </div>
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <Button variant="ghost" size="sm" onClick={() => { if (confirm("Remove this provider?")) deleteProvider.mutate(p.id) }} className="text-rose-500">Remove</Button>
-            </div>
-          </Card>
-        ))}
+              <div className="flex gap-2 shrink-0">
+                <Button variant="ghost" size="sm" onClick={() => { if (confirm("Remove this provider?")) deleteProvider.mutate(p.id) }} className="text-rose-500">Remove</Button>
+              </div>
+            </Card>
+          )
+        })}
         {providers?.length === 0 && !isLoading && (
           <div className="text-center py-12 sm:py-16">
+            <Shield className="w-10 h-10 text-muted mx-auto mb-3 opacity-40" />
             <p className="text-base text-muted mb-1">No providers yet</p>
-            <p className="text-sm text-muted mb-5">Add your first LLM API key to get started.</p>
+            <p className="text-sm text-muted mb-5">API keys are encrypted at rest. Your credentials stay yours.</p>
             <Button onClick={() => setShowForm(true)}>+ Add Provider</Button>
           </div>
         )}
@@ -88,10 +103,32 @@ export default function ProvidersPage() {
           </div>
           <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="My OpenAI" />
           <Input label="Base URL" value={form.base_url} onChange={(e) => setForm({ ...form, base_url: e.target.value })} placeholder="https://api.openai.com/v1" />
-          <Input label="API Key" type="password" value={form.api_key ?? ""} onChange={(e) => setForm({ ...form, api_key: e.target.value })} placeholder="sk-..." />
+          <div className="relative">
+            <Input label="API Key"
+              type={showKey ? "text" : "password"}
+              value={form.api_key ?? ""}
+              onChange={(e) => setForm({ ...form, api_key: e.target.value })}
+              placeholder={showKey ? "sk-..." : "••••••••••••••••"}
+            />
+            <button
+              onClick={() => setShowKey(!showKey)}
+              className="absolute right-2 top-8 p-1 rounded hover:bg-accent-soft transition-colors text-muted"
+              tabIndex={-1}
+              aria-label={showKey ? "Hide API key" : "Show API key"}
+            >
+              {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-muted p-2 rounded-lg bg-accent-soft/50">
+            <Shield className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Your API key will be encrypted before storage. Never shared.</span>
+          </div>
 
           {testResult && (
-            <div className={`flex items-center gap-2 text-sm p-3 rounded-lg ${testResult.ok ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700" : "bg-rose-50 dark:bg-rose-900/20 text-rose-700"}`}>
+            <div className={`flex items-center gap-2 text-sm p-3 rounded-lg ${
+              testResult.ok ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700" : "bg-rose-50 dark:bg-rose-900/20 text-rose-700"
+            }`}>
               {testResult.ok ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
               {testResult.msg}
             </div>
