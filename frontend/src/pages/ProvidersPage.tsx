@@ -1,10 +1,11 @@
-/** Providers — LLM credentials with encrypted-at-rest privacy indicators. */
+/** Providers — LLM credentials with real test connection, encrypted-at-rest indicators. */
 
 import { useState } from "react"
 import { useProviders, useCreateProvider, useDeleteProvider, usePresets } from "@/api/providers"
 import type { ProviderFormData } from "@/api/providers"
 import { Button, Card, Badge, Dialog, Input, SkeletonRow } from "@/components/ui"
 import { CheckCircle, XCircle, Shield, ShieldCheck, Eye, EyeOff, Wifi } from "lucide-react"
+import { apiFetch } from "@/api/client"
 
 export default function ProvidersPage() {
   const { data: providers, isLoading } = useProviders()
@@ -15,7 +16,7 @@ export default function ProvidersPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<ProviderFormData>({ name: "", provider_type: "custom", base_url: "", api_key: "" })
   const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string; models?: string[] } | null>(null)
   const [showKey, setShowKey] = useState(false)
 
   const applyPreset = (type: string) => {
@@ -24,18 +25,31 @@ export default function ProvidersPage() {
   }
 
   const handleTest = async () => {
-    setTesting(true); setTestResult(null)
-    await new Promise((r) => setTimeout(r, 1000))
-    setTestResult({ ok: true, msg: "Connected! Models available: gpt-4o, gpt-4o-mini" })
+    if (!form.base_url) return
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const result = await apiFetch<{ ok: boolean; models: string[] }>("/providers/test", {
+        method: "POST",
+        body: JSON.stringify({ base_url: form.base_url, api_key: form.api_key, provider_type: form.provider_type }),
+      })
+      setTestResult({ ok: true, msg: `Connected! Models: ${result.models.slice(0, 3).join(", ")}`, models: result.models })
+    } catch (e) {
+      setTestResult({ ok: false, msg: e instanceof Error ? e.message : "Connection failed" })
+    }
     setTesting(false)
   }
 
   const handleSave = () => {
     if (!form.name || !form.base_url) return
     createProvider.mutate(form, { onSuccess: () => {
-      setShowForm(false); setForm({ name: "", provider_type: "custom", base_url: "", api_key: "" }); setTestResult(null)
+      setShowForm(false)
+      setForm({ name: "", provider_type: "custom", base_url: "", api_key: "" })
+      setTestResult(null)
     }})
   }
+
+  const canTest = form.base_url && (form.provider_type === "ollama" || form.api_key)
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -74,9 +88,7 @@ export default function ProvidersPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2 shrink-0">
-                <Button variant="ghost" size="sm" onClick={() => { if (confirm("Remove this provider?")) deleteProvider.mutate(p.id) }} className="text-rose-500">Remove</Button>
-              </div>
+              <Button variant="ghost" size="sm" onClick={() => { if (confirm("Remove?")) deleteProvider.mutate(p.id) }} className="text-rose-500 shrink-0">Remove</Button>
             </Card>
           )
         })}
@@ -108,13 +120,11 @@ export default function ProvidersPage() {
               type={showKey ? "text" : "password"}
               value={form.api_key ?? ""}
               onChange={(e) => setForm({ ...form, api_key: e.target.value })}
-              placeholder={showKey ? "sk-..." : "••••••••••••••••"}
+              placeholder={showKey ? "sk-..." : "•".repeat(24)}
             />
-            <button
-              onClick={() => setShowKey(!showKey)}
-              className="absolute right-2 top-8 p-1 rounded hover:bg-accent-soft transition-colors text-muted"
-              tabIndex={-1}
-              aria-label={showKey ? "Hide API key" : "Show API key"}
+            <button onClick={() => setShowKey(!showKey)}
+              className="absolute right-2 top-8 p-1 rounded hover:bg-accent-soft text-muted" tabIndex={-1}
+              aria-label={showKey ? "Hide" : "Show"}
             >
               {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -126,15 +136,20 @@ export default function ProvidersPage() {
           </div>
 
           {testResult && (
-            <div className={`flex items-center gap-2 text-sm p-3 rounded-lg ${
+            <div className={`flex items-start gap-2 text-sm p-3 rounded-lg ${
               testResult.ok ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700" : "bg-rose-50 dark:bg-rose-900/20 text-rose-700"
             }`}>
-              {testResult.ok ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
-              {testResult.msg}
+              {testResult.ok ? <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 shrink-0 mt-0.5" />}
+              <div>
+                <p>{testResult.msg}</p>
+                {testResult.models && testResult.models.length > 3 && (
+                  <p className="text-xs mt-1 opacity-75">+{testResult.models.length - 3} more models</p>
+                )}
+              </div>
             </div>
           )}
 
-          <Button variant="secondary" onClick={handleTest} loading={testing}>Test Connection</Button>
+          <Button variant="secondary" onClick={handleTest} loading={testing} disabled={!canTest}>Test Connection</Button>
           <div className="flex gap-2 justify-end pt-2 border-t border-border">
             <Button variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={!form.name || !form.base_url}>Save Provider</Button>

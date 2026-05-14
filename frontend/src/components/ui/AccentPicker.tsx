@@ -1,5 +1,5 @@
-import { useTheme } from "../../contexts/ThemeContext"
-import type { Accent } from "../../contexts/ThemeContext"
+import { useTheme } from "@/contexts/ThemeContext"
+import type { Accent } from "@/contexts/ThemeContext"
 
 const ACCENTS: { value: Accent; label: string; color: string }[] = [
   { value: "blue", label: "Blue", color: "#3b82f6" },

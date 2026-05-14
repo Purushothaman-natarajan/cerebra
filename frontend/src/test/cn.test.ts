@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { cn } from "../components/ui/cn"
+import { cn } from "@/components/ui/cn"
 
 describe("cn utility", () => {
   it("merges class names", () => {

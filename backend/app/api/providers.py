@@ -59,6 +59,44 @@ async def list_available_models(db: AsyncSession = Depends(get_db)):
     return models
 
 
+@router.post("/test")
+async def test_connection(body: dict):
+    """Test a provider connection by making a lightweight API call."""
+    import httpx
+    base_url = body.get("base_url", "")
+    api_key = body.get("api_key", "")
+    provider_type = body.get("provider_type", "custom")
+
+    if not base_url:
+        raise HTTPException(400, "Base URL is required")
+    if not api_key and provider_type != "ollama":
+        raise HTTPException(400, "API key is required for this provider type")
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            if provider_type == "openai":
+                resp = await client.get(f"{base_url.rstrip('/')}/models", headers={"Authorization": f"Bearer {api_key}"})
+                resp.raise_for_status()
+                models = [m["id"] for m in resp.json().get("data", [])[:5]]
+            elif provider_type == "gemini":
+                resp = await client.get(f"{base_url.rstrip('/')}/models", params={"key": api_key})
+                resp.raise_for_status()
+                models = [m["name"].split("/")[-1] for m in resp.json().get("models", [])[:5]]
+            elif provider_type == "ollama":
+                resp = await client.get(f"{base_url.rstrip('/')}/tags")
+                resp.raise_for_status()
+                models = [m["name"] for m in resp.json().get("models", [])[:5]]
+            else:
+                resp = await client.get(f"{base_url.rstrip('/')}/models", headers={"Authorization": f"Bearer {api_key}"} if api_key else {})
+                models = [m.get("id", m.get("name", "")) for m in resp.json().get("data", resp.json().get("models", []))[:5]]
+
+            return {"ok": True, "models": models}
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(400, f"Connection failed: HTTP {e.response.status_code}")
+    except httpx.RequestError as e:
+        raise HTTPException(400, f"Connection failed: {e}")
+
+
 @router.get("/presets")
 async def list_presets():
     return [{"type": k, "label": k.title(), "base_url": v["base_url"]} for k, v in PRESETS.items()]

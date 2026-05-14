@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
-import Skeleton, { SkeletonCard, SkeletonRow } from "../components/ui/Skeleton"
+import Skeleton, { SkeletonCard, SkeletonRow } from "@/components/ui/Skeleton"
 
 describe("Skeleton", () => {
   it("renders with pulse animation", () => {
