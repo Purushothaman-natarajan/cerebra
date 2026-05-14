@@ -45,6 +45,20 @@ async def delete_provider(provider_id: str, db: AsyncSession = Depends(get_db)):
     return {"ok": True}
 
 
+@router.get("/models")
+async def list_available_models(db: AsyncSession = Depends(get_db)):
+    """Get all available models from all active providers."""
+    from sqlalchemy import select
+    from app.models.provider import LLMProvider
+    result = await db.execute(select(LLMProvider).where(LLMProvider.is_active == True))
+    providers = result.scalars().all()
+    models = []
+    for p in providers:
+        for m in (p.models or []):
+            models.append({"model": m, "provider_name": p.name, "provider_type": p.provider_type, "provider_id": str(p.id)})
+    return models
+
+
 @router.get("/presets")
 async def list_presets():
     return [{"type": k, "label": k.title(), "base_url": v["base_url"]} for k, v in PRESETS.items()]

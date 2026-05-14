@@ -32,7 +32,14 @@ async def run_tests():
 
     async def override_db():
         async with session_factory() as s:
-            yield s
+            try:
+                yield s
+                await s.commit()
+            except Exception:
+                await s.rollback()
+                raise
+            finally:
+                await s.close()
 
     app.dependency_overrides[get_db] = override_db
     transport = ASGITransport(app=app)
