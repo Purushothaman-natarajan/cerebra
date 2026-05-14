@@ -24,7 +24,10 @@ async def get_redis() -> aioredis.Redis | None:
     global _redis
     if _redis is None:
         try:
-            _redis = aioredis.from_url(settings.redis_url, decode_responses=True)
+            url = settings.redis_url
+            if settings.redis_password and ":@" not in url:
+                url = url.replace("redis://", f"redis://:{settings.redis_password}@")
+            _redis = aioredis.from_url(url, decode_responses=True)
             await _redis.ping()
         except Exception as e:
             logger.warning("Redis not available: %s", e)

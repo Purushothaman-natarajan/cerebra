@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     """
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/cerebra"
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = "redis://:password@localhost:6379/0"
+    redis_password: str = ""
     gemini_api_key: str = ""
     telegram_bot_token: str = ""
     telegram_webhook_url: str = ""

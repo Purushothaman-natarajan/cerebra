@@ -16,6 +16,7 @@ from app.api import agents, channels, providers, runs, templates, tools, workflo
 from app.auth import verify_api_key
 from app.config import settings
 from app.db import Base, engine
+from app.ratelimit import rate_limit_middleware
 
 
 @asynccontextmanager
@@ -43,11 +44,11 @@ app.add_middleware(
 
 @app.middleware("http")
 async def auth_middleware(request, call_next):
-    """Validate API key on all requests except public paths."""
+    """Validate API key and rate limit on all requests except public paths."""
     response = await verify_api_key(request)
     if response:
         return response
-    return await call_next(request)
+    return await rate_limit_middleware(request, call_next)
 
 
 app.include_router(agents.router)
