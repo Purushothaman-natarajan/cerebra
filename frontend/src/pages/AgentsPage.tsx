@@ -7,7 +7,7 @@ import { useAgentStore } from "@/store/agentStore"
 import AgentCard from "@/components/AgentBuilder/AgentCard"
 import AgentForm from "@/components/AgentBuilder/AgentForm"
 import AgentTestDialog from "@/components/AgentBuilder/AgentTestDialog"
-import { Button, Empty, SkeletonCard } from "@/components/ui"
+import { Badge, Button, Card, Empty, SkeletonCard } from "@/components/ui"
 import { Bot, Plus, LayoutTemplate, Download, Upload } from "lucide-react"
 
 export default function AgentsPage() {
@@ -74,14 +74,30 @@ export default function AgentsPage() {
           <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <LayoutTemplate className="w-3.5 h-3.5" /> Agent Templates
           </h2>
-          <div className="flex flex-wrap gap-2 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {templates.map((tmpl) => (
-              <button key={tmpl.id} onClick={() => openForm({ id: "", data: { name: tmpl.name, role: tmpl.role, system_prompt: tmpl.system_prompt, model: "", tools: tmpl.tools, memory_enabled: tmpl.memory_enabled, max_iterations: tmpl.max_iterations, guardrails: { blocked_topics: tmpl.guardrails?.blocked_topics ?? [], max_tokens: tmpl.guardrails?.max_tokens ?? 4096 } } })}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:border-accent/50 hover:bg-accent-soft transition-all text-sm group"
-              >
-                <LayoutTemplate className="w-4 h-4 text-muted group-hover:text-accent" />
-                <span className="text-foreground text-xs">{tmpl.name}</span>
-              </button>
+              <Card key={tmpl.id} hover className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-accent-soft shrink-0" style={{ color: "var(--accent)" }}>
+                    <LayoutTemplate className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-medium text-foreground text-sm truncate">{tmpl.name}</span>
+                      <Badge variant="info" className="shrink-0">template</Badge>
+                    </div>
+                    <p className="text-xs text-muted line-clamp-2">{tmpl.role}</p>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {tmpl.tools.slice(0, 4).map((tool) => (
+                        <span key={tool} className="text-[10px] px-1.5 py-0.5 rounded bg-accent-soft text-muted">{tool}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <Button size="sm" variant="secondary" className="w-full mt-3" onClick={() => openForm({ id: "", data: { name: tmpl.name, role: tmpl.role, system_prompt: tmpl.system_prompt, model: "", tools: tmpl.tools, memory_enabled: tmpl.memory_enabled, max_iterations: tmpl.max_iterations, guardrails: { blocked_topics: tmpl.guardrails?.blocked_topics ?? [], max_tokens: tmpl.guardrails?.max_tokens ?? 4096 } } })}>
+                  Use Template
+                </Button>
+              </Card>
             ))}
           </div>
         </div>

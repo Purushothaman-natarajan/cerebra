@@ -34,6 +34,13 @@ async def list_runs(db: AsyncSession = Depends(get_db)):
     return [RunResponse.from_orm(r) for r in runs]
 
 
+@router.delete("", response_model=DeleteResponse)
+async def clear_runs(db: AsyncSession = Depends(get_db)):
+    """Delete all run history and run events."""
+    await run_service.clear_runs(db)
+    return {"ok": True}
+
+
 @router.get("/{run_id}", response_model=RunResponse,
     responses={**response_example(_RUN_EXAMPLE), **{404: {"description": "Run not found"}}})
 async def get_run(run_id: str, db: AsyncSession = Depends(get_db)):

@@ -52,6 +52,7 @@ async def run_workflow(
         "_router_conditions": {},
         "run_id": rid,
         "_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost": 0.0},
+        "_db": db,
     }
 
     event = {"run_id": rid, "type": "run_start", "timestamp": datetime.now(timezone.utc).isoformat(), "payload": {"input": input_message}}
@@ -64,6 +65,8 @@ async def run_workflow(
     except Exception:
         event = {"run_id": rid, "type": "run_error", "timestamp": datetime.now(timezone.utc).isoformat(), "payload": {"error": "Workflow execution failed"}}
         await publish(f"run:events:{rid}", event)
+        if db:
+            await run_service.add_run_event(db, rid, "run_error", "system", event["payload"])
         raise
 
     usage = result.get("_usage", {})
@@ -72,11 +75,21 @@ async def run_workflow(
     total_tokens = usage.get("total_tokens", 0)
     cost = usage.get("cost", 0.0)
 
+    messages = result.get("messages", [])
+    final_output = ""
+    for message in reversed(messages):
+        if message.get("role") == "assistant":
+            final_output = str(message.get("content", ""))
+            break
+    if not final_output and messages:
+        final_output = str(messages[-1].get("content", messages[-1]))
+
     event = {
         "run_id": rid, "type": "run_end",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "payload": {
-            "messages": str(result.get("messages", [])),
+            "output": final_output,
+            "messages": messages,
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": total_tokens,

@@ -9,16 +9,26 @@ const fetchRuns = () => apiFetch<Run[]>("/runs")
 const fetchRun = (id: string) => apiFetch<Run>(`/runs/${id}`)
 const fetchRunEvents = (id: string) => apiFetch<RunEvent[]>(`/runs/${id}/events`)
 const triggerRun = (workflow_id: string, input: string) => apiFetch<Run>("/runs", { method: "POST", body: JSON.stringify({ workflow_id, input }) })
+const clearRuns = () => apiFetch<{ ok: boolean }>("/runs", { method: "DELETE" })
 
 export function useRuns() { return useQuery({ queryKey: ["runs"], queryFn: fetchRuns }) }
 export function useRun(id: string) { return useQuery({ queryKey: ["runs", id], queryFn: () => fetchRun(id), enabled: !!id }) }
-export function useRunEvents(id: string) { return useQuery({ queryKey: ["runs", id, "events"], queryFn: () => fetchRunEvents(id), enabled: !!id }) }
+export function useRunEvents(id: string) { return useQuery({ queryKey: ["runs", id, "events"], queryFn: () => fetchRunEvents(id), enabled: !!id, refetchInterval: 2000 }) }
 
 export function useTriggerRun() {
   const qc = useQueryClient(); const { toast } = useToast()
   return useMutation({
     mutationFn: ({ workflow_id, input }: { workflow_id: string; input: string }) => triggerRun(workflow_id, input),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["runs"] }); toast("success", "Run triggered") },
+    onError: (e: Error) => toast("error", e.message),
+  })
+}
+
+export function useClearRuns() {
+  const qc = useQueryClient(); const { toast } = useToast()
+  return useMutation({
+    mutationFn: clearRuns,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["runs"] }); toast("success", "Run history cleared") },
     onError: (e: Error) => toast("error", e.message),
   })
 }

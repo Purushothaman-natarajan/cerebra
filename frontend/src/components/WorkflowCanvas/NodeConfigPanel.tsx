@@ -4,6 +4,7 @@ import type { Node } from "reactflow"
 import { X, Bot, GitFork, UserCheck, LogOut, StickyNote } from "lucide-react"
 import { Input, Textarea, Select } from "@/components/ui"
 import { useAgentTools } from "@/api/tools"
+import { useAvailableModels } from "@/api/providers"
 
 interface Props {
   node: Node | null
@@ -21,12 +22,17 @@ const nodeColors: Record<string, string> = {
 
 export default function NodeConfigPanel({ node, onClose, onUpdate }: Props) {
   const { data: tools } = useAgentTools()
+  const { data: availableModels } = useAvailableModels()
 
   if (!node) return null
 
   const Icon = nodeIcons[node.type as string] || Bot
   const color = nodeColors[node.type as string] || "var(--accent)"
   const d = node.data as Record<string, unknown>
+  const modelOptions = [
+    { value: "", label: "Select model..." },
+    ...(availableModels?.map((m) => ({ value: m.model, label: m.model, group: m.provider_name })) ?? []),
+  ]
 
   const update = (key: string, value: unknown) => {
     onUpdate(node.id, { ...d, [key]: value })
@@ -55,7 +61,7 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }: Props) {
         {node.type === "agent" && (
           <>
             <Textarea label="System Prompt" value={(d.system_prompt as string) || ""} onChange={(e) => update("system_prompt", e.target.value)} rows={4} placeholder="You are a helpful assistant..." />
-            <Input label="Model" value={(d.model as string) || "gemini-2.0-flash"} onChange={(e) => update("model", e.target.value)} placeholder="gemini-2.0-flash" />
+            <Select label="Model" value={(d.model as string) || ""} onChange={(e) => update("model", e.target.value)} options={modelOptions} />
             <Input label="Max Iterations" type="number" value={(d.max_iterations as number) ?? 10} onChange={(e) => update("max_iterations", Number(e.target.value))} min={1} />
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">Tools</label>

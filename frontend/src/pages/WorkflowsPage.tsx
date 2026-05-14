@@ -2,20 +2,24 @@
 
 import { useState, useCallback } from "react"
 import type { Node, Edge } from "reactflow"
+import { useNavigate } from "react-router-dom"
 import { useWorkflows, useCreateWorkflow, useUpdateWorkflow, useDeleteWorkflow } from "@/api/workflows"
 import { useTemplates } from "@/api/templates"
 import type { Template } from "@/api/templates"
 import { useAgents } from "@/api/agents"
 import { useTriggerRun } from "@/api/runs"
 import type { Run } from "@/api/runs"
+import { useAvailableModels } from "@/api/providers"
 import Canvas from "@/components/WorkflowCanvas/Canvas"
 import { Button, Card, Badge, Dialog, Textarea, Select, Input } from "@/components/ui"
 import { GitBranch, Play, Copy, Trash2, FileText, CheckCircle, XCircle, Loader2 } from "lucide-react"
 
 export default function WorkflowsPage() {
+  const navigate = useNavigate()
   const { data: workflows, isLoading } = useWorkflows()
   const { data: templates } = useTemplates()
   const { data: agents } = useAgents()
+  const { data: availableModels } = useAvailableModels()
   const createWorkflow = useCreateWorkflow()
   const updateWorkflow = useUpdateWorkflow()
   const deleteWorkflow = useDeleteWorkflow()
@@ -31,6 +35,13 @@ export default function WorkflowsPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
   const [runInput, setRunInput] = useState("")
   const [testResult, setTestResult] = useState<{ run: Run; loading: boolean } | null>(null)
+  const [templateModels, setTemplateModels] = useState<Record<string, string>>({})
+
+  const modelOptions = [
+    { value: "", label: "Select model..." },
+    ...(availableModels?.map((m) => ({ value: m.model, label: m.model, group: m.provider_name })) ?? []),
+  ]
+  const firstModel = availableModels?.[0]?.model ?? ""
 
   const selectWorkflow = useCallback((id: string) => {
     setSelectedId(id)
@@ -67,9 +78,9 @@ export default function WorkflowsPage() {
     setTestResult({ run: { id: "", workflow_id: selectedId, status: "running", started_at: null, finished_at: null, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0 }, loading: true })
     triggerRun.mutate(
       { workflow_id: selectedId, input: "Test run" },
-      { onSuccess: (run) => setTestResult({ run, loading: false }), onError: () => setTestResult({ run: { id: "", workflow_id: selectedId, status: "failed", started_at: null, finished_at: null, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0 }, loading: false }) }
+      { onSuccess: (run) => { setTestResult({ run, loading: false }); navigate(`/runs?run=${run.id}`) }, onError: () => setTestResult({ run: { id: "", workflow_id: selectedId, status: "failed", started_at: null, finished_at: null, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0 }, loading: false }) }
     )
-  }, [selectedId, triggerRun])
+  }, [navigate, selectedId, triggerRun])
 
   const handleCanvasChange = useCallback((nodes: Node[], edges: Edge[]) => {
     setCanvasNodes(nodes); setCanvasEdges(edges)
@@ -77,10 +88,29 @@ export default function WorkflowsPage() {
 
   const handleRunNow = (id: string) => { setSelectedId(id); setShowRunConfig(true) }
 
+  const chooseTemplate = (tmpl: Template) => {
+    setSelectedTemplate(tmpl)
+    const defaults: Record<string, string> = {}
+    for (const node of tmpl.nodes) {
+      if (node.type === "agent") defaults[node.id] = firstModel || (node.config?.model as string) || ""
+    }
+    setTemplateModels(defaults)
+  }
+
   const handleImportTemplate = () => {
     if (!selectedTemplate) return
+    const nodes = selectedTemplate.nodes.map((node) => {
+      if (node.type !== "agent") return node
+      return {
+        ...node,
+        config: {
+          ...node.config,
+          model: templateModels[node.id] || firstModel || node.config?.model || "",
+        },
+      }
+    })
     createWorkflow.mutate(
-      { name: selectedTemplate.name, nodes: selectedTemplate.nodes, edges: selectedTemplate.edges, trigger: selectedTemplate.trigger },
+      { name: selectedTemplate.name, nodes, edges: selectedTemplate.edges, trigger: selectedTemplate.trigger },
       { onSuccess: (data) => { setShowTemplates(false); setSelectedTemplate(null); selectWorkflow(data.id) } }
     )
   }
@@ -182,7 +212,7 @@ export default function WorkflowsPage() {
       <Dialog open={showTemplates && !selectedTemplate} onClose={() => setShowTemplates(false)} title="Choose a Template" className="max-w-2xl">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
           {templates?.map((tmpl) => (
-            <Card key={tmpl.name} hover className="cursor-pointer" onClick={() => setSelectedTemplate(tmpl)}>
+            <Card key={tmpl.name} hover className="cursor-pointer" onClick={() => chooseTemplate(tmpl)}>
               <div className="flex items-start justify-between mb-2">
                 <div className="p-2 rounded-lg bg-accent-soft"><FileText className="w-4 h-4" style={{ color: "var(--accent)" }} /></div>
                 <Badge variant="info" className="text-[10px]">{tmpl.trigger_type}</Badge>
@@ -224,7 +254,12 @@ export default function WorkflowsPage() {
             {selectedTemplate?.nodes.filter((n) => n.type === "agent").map((n) => (
               <div key={n.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
                 <span className="text-sm font-medium text-foreground w-32 truncate">{n.id}</span>
-                <Input defaultValue={n.config?.model as string || "gemini-2.0-flash"} className="flex-1" />
+                <Select
+                  value={templateModels[n.id] || firstModel || ""}
+                  onChange={(e) => setTemplateModels((current) => ({ ...current, [n.id]: e.target.value }))}
+                  options={modelOptions}
+                  className="flex-1"
+                />
               </div>
             ))}
             <div className="flex justify-between pt-2">
@@ -259,7 +294,13 @@ export default function WorkflowsPage() {
           <div className="flex gap-2 justify-end pt-2">
             <Button variant="secondary" onClick={() => setShowRunConfig(false)}>Cancel</Button>
             <Button onClick={() => {
-              if (selectedId) { triggerRun.mutate({ workflow_id: selectedId, input: runInput }); setShowRunConfig(false) }
+              if (selectedId) {
+                triggerRun.mutate(
+                  { workflow_id: selectedId, input: runInput },
+                  { onSuccess: (run) => navigate(`/runs?run=${run.id}`) }
+                )
+                setShowRunConfig(false)
+              }
             }}><Play className="w-4 h-4 mr-1" /> Run Workflow</Button>
           </div>
         </div>

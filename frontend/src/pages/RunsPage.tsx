@@ -1,11 +1,12 @@
 /** Runs screen — filterable list + detail timeline with agent traces, timing, cost estimates. */
 
-import { useState } from "react"
-import { useRuns, useRunEvents, useTriggerRun } from "@/api/runs"
+import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router-dom"
+import { useClearRuns, useRuns, useRunEvents, useTriggerRun } from "@/api/runs"
 import LiveLogs from "@/components/MonitorPanel/LiveLogs"
 import MessageTrace from "@/components/MonitorPanel/MessageTrace"
 import { Badge, Card, Select, SkeletonRow } from "@/components/ui"
-import { Activity, Clock, DollarSign, CheckCircle, XCircle, Loader2, FileText, RefreshCw, Play } from "lucide-react"
+import { Activity, Clock, DollarSign, CheckCircle, XCircle, Loader2, FileText, RefreshCw, Play, Trash2 } from "lucide-react"
 
 const statusIcon: Record<string, typeof CheckCircle> = {
   completed: CheckCircle, failed: XCircle, running: Loader2, pending: Clock,
@@ -20,9 +21,29 @@ function formatDuration(ms: number): string {
   return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`
 }
 
+function formatDateTime(value: string | null): string {
+  if (!value) return ""
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  }).format(new Date(value))
+}
+
+function payloadText(value: unknown): string {
+  if (!value) return ""
+  return typeof value === "string" ? value : JSON.stringify(value, null, 2)
+}
+
 export default function RunsPage() {
   const { data: runs, isLoading, refetch } = useRuns()
   const { mutate: triggerRun } = useTriggerRun()
+  const clearRuns = useClearRuns()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState("all")
@@ -49,9 +70,19 @@ export default function RunsPage() {
 
   // Extract final output from run_end event
   const runEndEvent = events?.find((e) => e.type === "run_end")
-  const runOutput: string = runEndEvent?.payload?.messages as string || ""
+  const runOutput = payloadText(runEndEvent?.payload?.output) || payloadText(runEndEvent?.payload?.messages)
   const runErrorEvent = events?.find((e) => e.type === "run_error")
   const runError: string = runErrorEvent?.payload?.error as string || ""
+
+  useEffect(() => {
+    const runId = searchParams.get("run")
+    if (runId) setSelectedId(runId)
+  }, [searchParams])
+
+  const chooseRun = (id: string) => {
+    setSelectedId(id)
+    setSearchParams({ run: id })
+  }
 
   return (
     <div className="flex h-full">
@@ -62,6 +93,9 @@ export default function RunsPage() {
             <h2 className="font-semibold text-foreground text-sm">Runs</h2>
             <button onClick={() => refetch()} className="p-1 rounded-lg hover:bg-accent-soft transition-colors text-muted hover:text-foreground" title="Refresh">
               <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={() => { if (confirm("Clear all run history?")) { clearRuns.mutate(); setSelectedId(null); setSearchParams({}) } }} className="p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors text-rose-500" title="Clear runs">
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
           <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
@@ -80,13 +114,13 @@ export default function RunsPage() {
               ? new Date(run.finished_at).getTime() - new Date(run.started_at).getTime()
               : null
             return (
-              <Card key={run.id} hover className={`p-3 cursor-pointer ${selectedId === run.id ? "ring-2 ring-accent" : ""}`} onClick={() => setSelectedId(run.id)}>
+              <Card key={run.id} hover className={`p-3 cursor-pointer ${selectedId === run.id ? "ring-2 ring-accent" : ""}`} onClick={() => chooseRun(run.id)}>
                 <div className="flex items-center gap-2 mb-1">
                   <Icon className={`w-3.5 h-3.5 ${color} ${run.status === "running" ? "animate-spin" : ""}`} />
                   <span className="text-xs font-mono text-muted">#{run.id.slice(0, 6)}</span>
                   <Badge variant={run.status === "completed" ? "success" : run.status === "running" ? "info" : run.status === "failed" ? "danger" : "default"} className="ml-auto">{run.status}</Badge>
                 </div>
-                <p className="text-[10px] text-muted">{run.started_at ? new Date(run.started_at).toLocaleString() : "—"}</p>
+                <p className="text-[10px] text-muted">{run.started_at ? formatDateTime(run.started_at) : "-"}</p>
                 {duration && <p className="text-[10px] text-muted mt-0.5">{formatDuration(duration)}</p>}
                 {run.total_tokens > 0 && <p className="text-[10px] text-muted mt-0.5">{run.total_tokens} tok · ${run.cost.toFixed(6)}</p>}
               </Card>
@@ -110,7 +144,7 @@ export default function RunsPage() {
                   <Badge variant={selectedRun.status === "completed" ? "success" : selectedRun.status === "running" ? "info" : selectedRun.status === "failed" ? "danger" : "default"}>{selectedRun.status}</Badge>
                 </div>
                 <p className="text-xs text-muted">
-                  {selectedRun.started_at ? new Date(selectedRun.started_at).toLocaleString() : ""}
+                  {formatDateTime(selectedRun.started_at)}
                   {selectedRun.started_at && selectedRun.finished_at
                     ? ` · ${formatDuration(new Date(selectedRun.finished_at).getTime() - new Date(selectedRun.started_at).getTime())}`
                     : ""}

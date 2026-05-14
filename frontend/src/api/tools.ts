@@ -24,7 +24,7 @@ export function useDeleteTool() {
 
 // Test a built-in tool by name
 export async function testBuiltinTool(name: string, input: string): Promise<{ ok: boolean; output: string; duration_ms: number }> {
-  return apiFetch("/tools/test-builtin", { method: "POST", body: JSON.stringify({ tool_id: name, input }) })
+  return apiFetch("/tools/test", { method: "POST", body: JSON.stringify({ tool_id: name, input }) })
 }
 
 // Tool export/import

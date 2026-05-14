@@ -1,6 +1,7 @@
 """Custom tool management — built-in + user-defined tools with export/import."""
 
 import uuid
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -35,13 +36,17 @@ async def list_tools(db: AsyncSession = Depends(get_db)):
         {"name": t["name"], "description": t["description"], "tool_type": "builtin", "is_builtin": True}
         for t in get_tool_definitions()
     ]
-    result = await db.execute(select(CustomTool).order_by(CustomTool.created_at.desc()))
-    custom = [
-        {"id": str(t.id), "name": t.name, "description": t.description,
-         "tool_type": t.tool_type, "config": t.config, "is_builtin": False,
-         "created_at": t.created_at.isoformat()}
-        for t in result.scalars().all()
-    ]
+    try:
+        result = await db.execute(select(CustomTool).order_by(CustomTool.created_at.desc()))
+        custom = [
+            {"id": str(t.id), "name": t.name, "description": t.description,
+             "tool_type": t.tool_type, "config": t.config, "is_builtin": False,
+             "created_at": t.created_at.isoformat()}
+            for t in result.scalars().all()
+        ]
+    except Exception as exc:
+        logging.warning("Could not load custom tools; returning built-ins only: %s", exc)
+        custom = []
     return builtin + custom
 
 
@@ -73,7 +78,7 @@ async def test_tool(body: ToolTest, db: AsyncSession = Depends(get_db)):
     import time
 
     try:
-        tool_uuid = uuid.UUID(body.tool_id)
+        tool_uuid = uuid.UUID(body.tool_id or "")
     except ValueError:
         fn = get_tool(body.tool_id)
         if not fn:

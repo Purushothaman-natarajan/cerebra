@@ -9,6 +9,7 @@ from langgraph.graph import StateGraph
 
 from app.bus import publish
 from app.runtime.state import WorkflowState
+from app.services import run_service
 
 
 def compile_workflow(nodes: list[dict], edges: list[dict], entry_node: str) -> StateGraph:
@@ -59,23 +60,27 @@ def _make_agent_node(builder: StateGraph, node_id: str):
 
     async def wrapper(state: WorkflowState) -> WorkflowState:
         run_id = state.get("run_id", "")
+        db = state.get("_db")
         state["_current_agent_id"] = node_id
 
         # Publish agent_start event
-        await publish(f"run:events:{run_id}", {
+        event = {
             "run_id": run_id,
             "type": "agent_start",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "agent_id": node_id,
             "payload": {"model": state.get("_agent_configs", {}).get(node_id, {}).get("model", "")},
-        })
+        }
+        await publish(f"run:events:{run_id}", event)
+        if db and run_id:
+            await run_service.add_run_event(db, run_id, "agent_start", node_id, event["payload"])
 
         result = await agent_node(state)
         state.update(result)
 
         # Publish agent_end event
         usage = result.get("_usage", {})
-        await publish(f"run:events:{run_id}", {
+        event = {
             "run_id": run_id,
             "type": "agent_end",
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -86,7 +91,10 @@ def _make_agent_node(builder: StateGraph, node_id: str):
                 "total_tokens": usage.get("total_tokens", 0),
                 "cost": round(usage.get("cost", 0.0), 6),
             },
-        })
+        }
+        await publish(f"run:events:{run_id}", event)
+        if db and run_id:
+            await run_service.add_run_event(db, run_id, "agent_end", node_id, event["payload"])
 
         return state
 

@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.run import Run, RunEvent
@@ -44,6 +44,13 @@ async def get_run_events(db: AsyncSession, run_id: str) -> list[RunEvent]:
         select(RunEvent).where(RunEvent.run_id == uuid.UUID(run_id)).order_by(RunEvent.timestamp)
     )
     return list(result.scalars().all())
+
+
+async def clear_runs(db: AsyncSession) -> int:
+    result = await db.execute(delete(RunEvent))
+    await db.execute(delete(Run))
+    await db.flush()
+    return result.rowcount or 0
 
 
 async def add_run_event(db: AsyncSession, run_id: str, event_type: str, agent_id: str, payload: dict) -> RunEvent:

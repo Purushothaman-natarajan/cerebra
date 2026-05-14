@@ -1,12 +1,16 @@
 """Tests for built-in tools: calculator, web_crawler, http_request security."""
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+
+from app.db import get_db
+from app.main import app
 from app.runtime.tools.registry import get_tool_definitions, get_tool, list_tools
 
 
 def test_tool_registry_has_all_builtins():
     names = list_tools()
-    for expected in ("calculator", "web_search", "http_request", "web_crawler"):
+    for expected in ("calculator", "web_search", "http_request", "web_crawler", "circl_cve", "code_interpreter"):
         assert expected in names, f"Missing tool: {expected}"
 
 
@@ -83,6 +87,68 @@ async def test_web_crawler_invalid_url():
     from app.runtime.tools.web_crawler import web_crawler
     result = await web_crawler("not-a-valid-url")
     assert "Failed" in result
+
+
+@pytest.mark.asyncio
+async def test_tools_test_endpoint_runs_builtin_by_name(client):
+    response = await client.post("/tools/test", json={"tool_id": "calculator", "input": "2 + 3"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert data["output"] == "5"
+
+
+@pytest.mark.asyncio
+async def test_tools_list_includes_new_builtins(client):
+    response = await client.get("/tools")
+    assert response.status_code == 200
+    names = {tool["name"] for tool in response.json() if tool["is_builtin"]}
+    assert {"circl_cve", "code_interpreter"}.issubset(names)
+
+
+@pytest.mark.asyncio
+async def test_tools_list_returns_builtins_when_custom_tool_db_unavailable():
+    class BrokenSession:
+        async def execute(self, *_args, **_kwargs):
+            raise ConnectionError("database unavailable")
+
+    async def override_db():
+        yield BrokenSession()
+
+    app.dependency_overrides[get_db] = override_db
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            response = await ac.get("/tools")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    names = {tool["name"] for tool in response.json() if tool["is_builtin"]}
+    assert {"calculator", "web_search", "web_crawler", "circl_cve", "code_interpreter"}.issubset(names)
+
+
+@pytest.mark.asyncio
+async def test_tools_test_endpoint_handles_every_builtin(client):
+    samples = {
+        "calculator": "2 + 3",
+        "web_search": "",
+        "http_request": "http://localhost:8000/health",
+        "web_crawler": "not-a-valid-url",
+        "current_time": "IST",
+        "random_number": '{"min":1,"max":3,"count":2,"unique":true}',
+        "text_analyzer": "The quick brown fox jumps over the lazy dog.",
+        "json_tool": '{"action":"format","json":"{\\"name\\":\\"test\\"}"}',
+        "url_info": "not-a-valid-url",
+        "circl_cve": "not-a-cve",
+        "code_interpreter": '{"code":"result = 2 + 3","input":""}',
+    }
+
+    for name in list_tools():
+        response = await client.post("/tools/test", json={"tool_id": name, "input": samples[name]})
+        assert response.status_code == 200, name
+        data = response.json()
+        assert "ok" in data, name
+        assert isinstance(data["output"], str), name
 
 
 @pytest.mark.asyncio

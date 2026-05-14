@@ -7,6 +7,7 @@ Every model has:
 
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Any
+from datetime import datetime, timezone
 
 
 def ExField(*, example: Any, **kwargs: Any) -> Any:
@@ -27,6 +28,14 @@ def ExField(*, example: Any, **kwargs: Any) -> Any:
 def _example(obj):
     """Returns a ConfigDict that adds a full JSON example to the model's OpenAPI schema."""
     return ConfigDict(json_schema_extra={"example": obj})
+
+
+def _iso_utc(dt: datetime | None) -> str | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).isoformat()
 
 
 # ── Agents ───────────────────────────────────────────────────────
@@ -203,8 +212,8 @@ class RunResponse(BaseModel):
     def from_orm(cls, run) -> "RunResponse":
         return cls(
             id=str(run.id), workflow_id=str(run.workflow_id), status=run.status,
-            started_at=run.started_at.isoformat() if run.started_at else None,
-            finished_at=run.finished_at.isoformat() if run.finished_at else None,
+            started_at=_iso_utc(run.started_at),
+            finished_at=_iso_utc(run.finished_at),
             prompt_tokens=run.prompt_tokens, completion_tokens=run.completion_tokens,
             total_tokens=run.total_tokens, cost=run.cost,
         )
@@ -224,6 +233,17 @@ class RunEventResponse(BaseModel):
     type: str = Field(description="run_start | agent_start | tool_call | message | agent_end | run_end | run_error.")
     agent_id: str = Field(description="Agent or system identifier.")
     payload: dict = Field(description="Event payload (varies by type).")
+
+    @classmethod
+    def from_orm(cls, event) -> "RunEventResponse":
+        return cls(
+            id=event.id,
+            run_id=str(event.run_id),
+            timestamp=_iso_utc(event.timestamp) or "",
+            type=event.type,
+            agent_id=event.agent_id,
+            payload=event.payload,
+        )
 
 
 # ── Providers ────────────────────────────────────────────────────

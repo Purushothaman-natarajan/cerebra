@@ -7,6 +7,7 @@ from app.bus import publish
 from app.runtime.llm import call_llm_with_tools, estimate_cost
 from app.runtime.memory import get_history, add_messages
 from app.runtime.tools.registry import get_tool, get_tool_definitions
+from app.services import run_service
 
 
 async def agent_node(state: dict) -> dict:
@@ -20,6 +21,7 @@ async def agent_node(state: dict) -> dict:
     """
     agent_id = state.get("_current_agent_id")
     run_id = state.get("run_id", "")
+    db = state.get("_db")
     cfg = state.get("_agent_configs", {}).get(agent_id, {})
 
     system_prompt = cfg.get("system_prompt", "")
@@ -60,24 +62,30 @@ async def agent_node(state: dict) -> dict:
             if fn:
                 # Publish tool_call event
                 if run_id:
-                    await publish(f"run:events:{run_id}", {
+                    event = {
                         "run_id": run_id,
                         "type": "tool_call",
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                         "agent_id": agent_id,
                         "payload": {"tool": tool_call, "input": call_usage.get("input", result)},
-                    })
+                    }
+                    await publish(f"run:events:{run_id}", event)
+                    if db:
+                        await run_service.add_run_event(db, run_id, "tool_call", agent_id or "agent", event["payload"])
                 tool_result = await fn(result)
                 messages.append({"role": "tool", "content": tool_result, "name": tool_call})
                 # Publish tool result as message event
                 if run_id:
-                    await publish(f"run:events:{run_id}", {
+                    event = {
                         "run_id": run_id,
                         "type": "message",
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                         "agent_id": agent_id,
                         "payload": {"tool": tool_call, "result": tool_result[:500]},
-                    })
+                    }
+                    await publish(f"run:events:{run_id}", event)
+                    if db:
+                        await run_service.add_run_event(db, run_id, "message", agent_id or "agent", event["payload"])
         else:
             for topic in blocked_topics:
                 if topic.lower() in result.lower():
@@ -85,13 +93,16 @@ async def agent_node(state: dict) -> dict:
                     break
 
             if run_id:
-                await publish(f"run:events:{run_id}", {
+                event = {
                     "run_id": run_id,
                     "type": "message",
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "agent_id": agent_id,
                     "payload": {"content": result[:500]},
-                })
+                }
+                await publish(f"run:events:{run_id}", event)
+                if db:
+                    await run_service.add_run_event(db, run_id, "message", agent_id or "agent", event["payload"])
             messages.append({"role": "assistant", "content": result})
             break
     else:

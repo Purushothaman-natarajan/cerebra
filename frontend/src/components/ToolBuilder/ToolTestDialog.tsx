@@ -5,7 +5,6 @@ import { useState, useEffect } from "react"
 import { Button, Dialog, Input, Textarea } from "@/components/ui"
 import { Play, Clock, CheckCircle, XCircle } from "lucide-react"
 import { apiFetch } from "@/api/client"
-import { testBuiltinTool } from "@/api/tools"
 
 interface TestResult {
   ok: boolean
@@ -22,7 +21,7 @@ interface Props {
   initialInput?: string
 }
 
-export default function ToolTestDialog({ toolId, toolName, isBuiltin, open, onClose, initialInput = "" }: Props) {
+export default function ToolTestDialog({ toolId, toolName, open, onClose, initialInput = "" }: Props) {
   const [input, setInput] = useState(initialInput)
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<TestResult | null>(null)
@@ -34,15 +33,10 @@ export default function ToolTestDialog({ toolId, toolName, isBuiltin, open, onCl
     setRunning(true)
     setResult(null)
     try {
-      let res: TestResult
-      if (isBuiltin && toolId) {
-        res = await testBuiltinTool(toolId, input)
-      } else {
-        res = await apiFetch<TestResult>("/tools/test", {
-          method: "POST",
-          body: JSON.stringify({ tool_id: toolId, input }),
-        })
-      }
+      const res = await apiFetch<TestResult>("/tools/test", {
+        method: "POST",
+        body: JSON.stringify({ tool_id: toolId, input }),
+      })
       setResult(res)
     } catch (e) {
       setResult({ ok: false, output: e instanceof Error ? e.message : "Request failed", duration_ms: 0 })
