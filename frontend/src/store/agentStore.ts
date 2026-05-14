@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import type { AgentFormData } from "../api/agents"
+import type { AgentFormData } from "@/api/agents"
 
 interface AgentStore {
   isFormOpen: boolean

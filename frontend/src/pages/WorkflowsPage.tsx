@@ -2,14 +2,14 @@
 
 import { useState, useCallback } from "react"
 import type { Node, Edge } from "reactflow"
-import { useWorkflows, useCreateWorkflow, useUpdateWorkflow, useDeleteWorkflow } from "../api/workflows"
-import { useTemplates } from "../api/templates"
-import type { Template } from "../api/templates"
-import { useAgents } from "../api/agents"
-import { useTriggerRun } from "../api/runs"
-import Canvas from "../components/WorkflowCanvas/Canvas"
-import { Button, Card, Badge, Dialog, Textarea, Select, Empty } from "../components/ui"
-import { GitBranch, Play, Copy, Trash2 } from "lucide-react"
+import { useWorkflows, useCreateWorkflow, useUpdateWorkflow, useDeleteWorkflow } from "@/api/workflows"
+import { useTemplates } from "@/api/templates"
+import type { Template } from "@/api/templates"
+import { useAgents } from "@/api/agents"
+import { useTriggerRun } from "@/api/runs"
+import Canvas from "@/components/WorkflowCanvas/Canvas"
+import { Button, Card, Badge, Dialog, Textarea, Select, Input } from "@/components/ui"
+import { GitBranch, Play, Copy, Trash2, FileText } from "lucide-react"
 
 export default function WorkflowsPage() {
   const { data: workflows, isLoading } = useWorkflows()
@@ -57,16 +57,7 @@ export default function WorkflowsPage() {
     if (wf) createWorkflow.mutate({ ...wf, name: `${wf.name} (copy)` }, { onSuccess: (data) => selectWorkflow(data.id) })
   }
 
-  const handleRunNow = (id: string) => {
-    setSelectedId(id)
-    setShowRunConfig(true)
-  }
-
-  const handleTemplateClick = (tmpl: Template) => {
-    setSelectedTemplate(tmpl)
-    setTemplateStep(0)
-    setShowTemplates(true)
-  }
+  const handleRunNow = (id: string) => { setSelectedId(id); setShowRunConfig(true) }
 
   const handleImportTemplate = () => {
     if (!selectedTemplate) return
@@ -76,47 +67,53 @@ export default function WorkflowsPage() {
     )
   }
 
+  const triggerTypes = ["manual", "telegram", "schedule"]
+
   return (
-    <div className="flex h-screen">
+    <div className="flex h-[calc(100vh-4rem)] lg:h-screen -m-4 sm:-m-6">
       {/* Workflow list sidebar */}
-      <div className="w-60 border-r border-border p-4 overflow-y-auto bg-card shrink-0">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="font-semibold text-foreground text-sm">Workflows</h2>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="sm" onClick={() => setShowTemplates(true)}>📋 Templates</Button>
+      <div className="w-60 border-r border-border overflow-y-auto bg-card shrink-0 flex flex-col">
+        <div className="p-4 border-b border-border">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-foreground text-sm">Workflows</h2>
             <Button size="sm" onClick={handleNew}>+ New</Button>
           </div>
+          <Button variant="secondary" size="sm" className="w-full gap-2" onClick={() => setShowTemplates(true)}>
+            <FileText className="w-3.5 h-3.5" /> From Template
+          </Button>
         </div>
-
-        {isLoading && <p className="text-xs text-muted">Loading...</p>}
-
-        <div className="space-y-2">
+        <div className="flex-1 p-3 space-y-2 overflow-y-auto">
+          {isLoading && <p className="text-xs text-muted text-center py-4">Loading...</p>}
           {workflows?.map((wf) => (
             <Card key={wf.id} hover className={`p-3 cursor-pointer ${selectedId === wf.id ? "ring-2 ring-accent" : ""}`} onClick={() => selectWorkflow(wf.id)}>
               <div className="flex justify-between items-start mb-1">
-                <span className="font-medium text-sm text-foreground">{wf.name}</span>
-                <Badge variant={wf.trigger?.type === "schedule" ? "warning" : "default"}>{wf.trigger?.type || "manual"}</Badge>
+                <span className="font-medium text-sm text-foreground truncate">{wf.name}</span>
+                <Badge variant={wf.trigger?.type === "schedule" ? "warning" : "default"} className="shrink-0 ml-1">{wf.trigger?.type || "manual"}</Badge>
               </div>
               <p className="text-[10px] text-muted mb-2">{wf.nodes.length} agents · {wf.edges.length} connections</p>
               <div className="flex gap-1">
-                <button onClick={(e) => { e.stopPropagation(); handleRunNow(wf.id) }} className="p-1 rounded hover:bg-accent-soft transition-colors" title="Run Now"><Play className="w-3.5 h-3.5" /></button>
-                <button onClick={(e) => { e.stopPropagation(); handleDuplicate(wf.id) }} className="p-1 rounded hover:bg-accent-soft transition-colors" title="Duplicate"><Copy className="w-3.5 h-3.5" /></button>
-                <button onClick={(e) => { e.stopPropagation(); if (confirm("Delete?")) deleteWorkflow.mutate(wf.id) }} className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors text-rose-500" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={(e) => { e.stopPropagation(); handleRunNow(wf.id) }} className="p-1 rounded hover:bg-accent-soft" title="Run Now"><Play className="w-3.5 h-3.5" /></button>
+                <button onClick={(e) => { e.stopPropagation(); handleDuplicate(wf.id) }} className="p-1 rounded hover:bg-accent-soft" title="Duplicate"><Copy className="w-3.5 h-3.5" /></button>
+                <button onClick={(e) => { e.stopPropagation(); if (confirm("Delete?")) deleteWorkflow.mutate(wf.id) }} className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-500" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
             </Card>
           ))}
           {workflows?.length === 0 && !isLoading && (
-            <Empty title="No workflows" description="Create one or import a template." action={{ label: "Use Template", onClick: () => setShowTemplates(true) }} />
+            <div className="text-center py-8">
+              <GitBranch className="w-8 h-8 text-muted mx-auto mb-2 opacity-40" />
+              <p className="text-xs text-muted mb-3">No workflows yet</p>
+              <Button size="sm" onClick={handleNew}>Create One</Button>
+            </div>
           )}
         </div>
       </div>
 
       {/* Canvas area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {selectedId ? (
           <>
-            <div className="flex items-center gap-3 p-3 border-b border-border bg-card">
-              <input className="flex-1 rounded-lg border border-border bg-transparent px-3 py-1.5 text-sm text-foreground" value={name} onChange={(e) => setName(e.target.value)} />
+            <div className="flex items-center gap-3 p-3 border-b border-border bg-card shrink-0">
+              <Input value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
               <Button size="sm" variant="secondary" onClick={handleSave}>Save</Button>
               <Button size="sm" onClick={() => handleRunNow(selectedId)}><Play className="w-3.5 h-3.5 mr-1" /> Run</Button>
             </div>
@@ -131,7 +128,7 @@ export default function WorkflowsPage() {
               <p className="text-muted mb-4">Select a workflow or create one</p>
               <div className="flex gap-3 justify-center">
                 <Button onClick={handleNew}>+ Blank Workflow</Button>
-                <Button variant="secondary" onClick={() => setShowTemplates(true)}>📋 From Template</Button>
+                <Button variant="secondary" onClick={() => setShowTemplates(true)}><FileText className="w-4 h-4" /> From Template</Button>
               </div>
             </div>
           </div>
@@ -142,11 +139,12 @@ export default function WorkflowsPage() {
       <Dialog open={showTemplates && !selectedTemplate} onClose={() => setShowTemplates(false)} title="Choose a Template" className="max-w-2xl">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
           {templates?.map((tmpl) => (
-            <Card key={tmpl.name} hover className="cursor-pointer" onClick={() => handleTemplateClick(tmpl)}>
-              <div className="flex justify-between items-start mb-2">
-                <h4 className="font-medium text-foreground text-sm">{tmpl.name}</h4>
+            <Card key={tmpl.name} hover className="cursor-pointer" onClick={() => setSelectedTemplate(tmpl)}>
+              <div className="flex items-start justify-between mb-2">
+                <div className="p-2 rounded-lg bg-accent-soft"><FileText className="w-4 h-4" style={{ color: "var(--accent)" }} /></div>
                 <Badge variant="info" className="text-[10px]">{tmpl.trigger_type}</Badge>
               </div>
+              <h4 className="font-medium text-foreground text-sm mb-1">{tmpl.name}</h4>
               <p className="text-xs text-muted mb-2">{tmpl.description}</p>
               <div className="flex gap-3 text-[10px] text-muted">
                 <span>{tmpl.node_count} agents</span>
@@ -155,19 +153,19 @@ export default function WorkflowsPage() {
             </Card>
           ))}
         </div>
-        <div className="mt-4 flex justify-between">
-          <Button variant="ghost" onClick={() => setShowTemplates(false)}>Cancel</Button>
+        <div className="mt-4 flex justify-end">
+          <Button variant="secondary" onClick={() => setShowTemplates(false)}>Cancel</Button>
         </div>
       </Dialog>
 
       {/* Template 3-step wizard */}
-      <Dialog open={showTemplates && !!selectedTemplate} onClose={() => { setShowTemplates(false); setSelectedTemplate(null) }} title={`Use Template: ${selectedTemplate?.name}`} className="max-w-xl">
+      <Dialog open={showTemplates && !!selectedTemplate} onClose={() => { setShowTemplates(false); setSelectedTemplate(null) }} title={`Use: ${selectedTemplate?.name}`} className="max-w-xl">
         {templateStep === 0 && (
           <div className="space-y-4">
-            <p className="text-sm text-muted">This template creates a {selectedTemplate?.node_count}-agent workflow. Assign existing agents or create new ones with pre-filled defaults.</p>
+            <p className="text-sm text-muted">Assign agents or create new ones with pre-filled defaults.</p>
             {selectedTemplate?.nodes.filter((n) => n.type === "agent").map((n) => (
               <div key={n.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                <span className="text-sm font-medium text-foreground w-32">{n.id}</span>
+                <span className="text-sm font-medium text-foreground w-32 truncate">{n.id}</span>
                 <Select options={[{ value: "__new__", label: "Create new with defaults" }, ...(agents?.map((a) => ({ value: a.id, label: a.name })) ?? [])]} value="__new__" className="flex-1" />
               </div>
             ))}
@@ -182,8 +180,8 @@ export default function WorkflowsPage() {
             <p className="text-sm text-muted">Choose models for each agent.</p>
             {selectedTemplate?.nodes.filter((n) => n.type === "agent").map((n) => (
               <div key={n.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                <span className="text-sm font-medium text-foreground w-32">{n.id}</span>
-                <input className="flex-1 rounded-lg border border-border bg-transparent px-3 py-1.5 text-sm" defaultValue={n.config?.model as string || "gemini-2.0-flash"} />
+                <span className="text-sm font-medium text-foreground w-32 truncate">{n.id}</span>
+                <Input defaultValue={n.config?.model as string || "gemini-2.0-flash"} className="flex-1" />
               </div>
             ))}
             <div className="flex justify-between pt-2">
@@ -196,7 +194,7 @@ export default function WorkflowsPage() {
           <div className="space-y-4">
             <p className="text-sm text-muted">How should this workflow start?</p>
             <div className="space-y-2">
-              {["manual", "telegram", "schedule"].map((t) => (
+              {triggerTypes.map((t) => (
                 <label key={t} className="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-accent-soft">
                   <input type="radio" name="trigger" defaultChecked={t === "manual"} className="accent-accent" />
                   <span className="text-sm text-foreground capitalize">{t === "manual" ? "Manual (run from UI)" : t === "telegram" ? "Telegram message" : "Schedule"}</span>
@@ -218,10 +216,7 @@ export default function WorkflowsPage() {
           <div className="flex gap-2 justify-end pt-2">
             <Button variant="secondary" onClick={() => setShowRunConfig(false)}>Cancel</Button>
             <Button onClick={() => {
-              if (selectedId) {
-                triggerRun.mutate({ workflow_id: selectedId, input: runInput })
-                setShowRunConfig(false)
-              }
+              if (selectedId) { triggerRun.mutate({ workflow_id: selectedId, input: runInput }); setShowRunConfig(false) }
             }}><Play className="w-4 h-4 mr-1" /> Run Workflow</Button>
           </div>
         </div>

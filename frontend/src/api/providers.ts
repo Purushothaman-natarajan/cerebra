@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { useToast } from "../components/ui/Toast"
+import { useToast } from "@/components/ui/Toast"
 import { apiFetch } from "./client"
 
 export interface LLMProvider { id: string; name: string; provider_type: string; base_url: string; models: string[]; api_key?: string; is_active: boolean; created_at: string }
