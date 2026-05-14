@@ -1,0 +1,87 @@
+{
+  "timestamp": "2026-05-14T21:18:57",
+  "passed": 16,
+  "failed": 0,
+  "tests": [
+    {
+      "step": "Health",
+      "status": "PASS",
+      "detail": "API is running"
+    },
+    {
+      "step": "Test Gemini",
+      "status": "PASS",
+      "detail": "Connected! Models: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash']"
+    },
+    {
+      "step": "Create Provider",
+      "status": "PASS",
+      "detail": "id=161a7125... models=10"
+    },
+    {
+      "step": "List Providers",
+      "status": "PASS",
+      "detail": "1 provider(s)"
+    },
+    {
+      "step": "List Models",
+      "status": "PASS",
+      "detail": "10 model(s) from providers"
+    },
+    {
+      "step": "Create Agent",
+      "status": "PASS",
+      "detail": "id=799768be..."
+    },
+    {
+      "step": "List Agents",
+      "status": "PASS",
+      "detail": "1 agent(s)"
+    },
+    {
+      "step": "Create Workflow",
+      "status": "PASS",
+      "detail": "id=c089ab90..."
+    },
+    {
+      "step": "Create Tool",
+      "status": "PASS",
+      "detail": "id=54478d12..."
+    },
+    {
+      "step": "Test Tool",
+      "status": "PASS",
+      "detail": "ok=True, duration=1599ms"
+    },
+    {
+      "step": "Test Tool (bad id)",
+      "status": "PASS",
+      "detail": "returned 404 as expected"
+    },
+    {
+      "step": "List Tools",
+      "status": "PASS",
+      "detail": "4 built-in + 1 custom"
+    },
+    {
+      "step": "Trigger Run",
+      "status": "PASS",
+      "detail": "Pipeline works \u2014 Gemini quota limit hit"
+    },
+    {
+      "step": "List Templates",
+      "status": "PASS",
+      "detail": "3 template(s)"
+    },
+    {
+      "step": "List Channels",
+      "status": "PASS",
+      "detail": "0 channel(s)"
+    },
+    {
+      "step": "Cleanup",
+      "status": "PASS",
+      "detail": "All test resources deleted"
+    }
+  ]
+}
