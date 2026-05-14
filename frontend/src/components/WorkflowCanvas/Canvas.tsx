@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import ReactFlow, {
   Background,
   Controls,
@@ -45,21 +45,23 @@ function Flow({
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [edgeMenu, setEdgeMenu] = useState<{ edgeId: string; x: number; y: number; condition: string | null } | null>(null)
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
+  const nodesRef = useRef(nodes)
+  const edgesRef = useRef(edges)
+
+  useEffect(() => { nodesRef.current = nodes; edgesRef.current = edges }, [nodes, edges])
+
+  useEffect(() => {
+    onCanvasChange?.(nodes, edges)
+  }, [nodes, edges, onCanvasChange])
 
   const handleNodesChange: OnNodesChange = useCallback(
-    (changes) => {
-      onNodesChange(changes)
-      setTimeout(() => onCanvasChange?.(nodes, edges), 0)
-    },
-    [onNodesChange, nodes, edges, onCanvasChange]
+    (changes) => { onNodesChange(changes) },
+    [onNodesChange]
   )
 
   const handleEdgesChange: OnEdgesChange = useCallback(
-    (changes) => {
-      onEdgesChange(changes)
-      setTimeout(() => onCanvasChange?.(nodes, edges), 0)
-    },
-    [onEdgesChange, nodes, edges, onCanvasChange]
+    (changes) => { onEdgesChange(changes) },
+    [onEdgesChange]
   )
 
   const onConnect = useCallback(

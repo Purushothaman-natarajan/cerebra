@@ -1,31 +1,41 @@
+"""Alembic environment configuration — offline SQL generation for portability."""
+
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.db import Base
-from app.models import Agent, WorkflowDef, Run, RunEvent, Channel, ChannelMessage  # noqa: F401
-from app.config import settings
+from app.models import Agent, WorkflowDef, Run, RunEvent, Channel, ChannelMessage, LLMProvider, CustomTool  # noqa: F401
+
+# Import metadata without triggering async engine creation
+from app.db import Base, engine as _async_engine
+
+target_metadata = Base.metadata
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url.replace("+asyncpg", ""))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = Base.metadata
-
 
 def run_migrations_offline():
+    """Generate SQL migration script without connecting to a database."""
     url = config.get_main_option("sqlalchemy.url")
-    context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
+    context.configure(url=url, target_metadata=target_metadata, literal_binds=True, dialect_opts={"paramstyle": "named"})
     with context.begin_transaction():
         context.run_migrations()
 
 
 def run_migrations_online():
+    """Run migrations using a sync database URL.
+
+    Usage: alembic -x db=sqlite:///./app.db upgrade head
+    """
+    url = context.get_x_argument().get("db", "")
+    if not url:
+        url = config.get_main_option("sqlalchemy.url")
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        {"sqlalchemy.url": url},
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
