@@ -36,7 +36,14 @@ async def verify_api_key(request: Request) -> JSONResponse | None:
             "path": str(request.url.path), "method": request.method,
             "client_ip": request.client.host if request.client else "unknown",
         })
-        return JSONResponse(status_code=401, content={"detail": "Invalid or missing API key"})
+        return JSONResponse(
+            status_code=401,
+            content={
+                "detail": "Invalid or missing API key",
+                "message": "Set CEREBRA_API_KEY in your .env file or pass it as a Bearer token in the Authorization header. "
+                           "Without the correct key, you can browse but not execute workflows or access LLM providers.",
+            },
+        )
     return None
 
 

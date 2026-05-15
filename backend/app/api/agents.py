@@ -41,7 +41,10 @@ async def list_agents(db: AsyncSession = Depends(get_db)):
         return [AgentResponse.from_orm(a) for a in agents]
     # Fall back to default templates when no agents have been created
     try:
+        from app.config import settings
         from app.services.agent_template_service import DEFAULT_TEMPLATES
+        needs_key = not bool(settings.cerebra_api_key)
+        has_llm = bool(settings.gemini_api_key)
         now = datetime.now(timezone.utc).isoformat()
         return [
             {
@@ -52,6 +55,9 @@ async def list_agents(db: AsyncSession = Depends(get_db)):
                 "max_iterations": t["max_iterations"],
                 "guardrails": t["guardrails"],
                 "created_at": now, "updated_at": now,
+                "is_default": True,
+                "needs_provider_key": not has_llm,
+                "message": "Pre-built agent template. Add an LLM provider (GEMINI_API_KEY or configure one via Providers page) to use it." if not has_llm else None,
             }
             for t in DEFAULT_TEMPLATES
         ]
