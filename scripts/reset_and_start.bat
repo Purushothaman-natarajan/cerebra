@@ -64,7 +64,7 @@ if not exist .venv\Lib\site-packages\uvicorn (
     .venv\Scripts\python.exe -m pip install -r requirements.txt >nul 2>&1
 )
 
-start "cerebra-backend" cmd /c "cd /d %~dp0..\backend && .venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000"
+start "cerebra-backend" cmd /c "set DATABASE_URL=sqlite+aiosqlite:///./cerebra.db && set CEREBRA_API_KEY= && cd /d %~dp0..\backend && .venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000"
 
 REM Wait for backend to be ready
 echo  [WAIT] Waiting for backend to start...

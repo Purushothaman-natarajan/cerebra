@@ -56,7 +56,7 @@ if %errorlevel% neq 0 (
 echo [OK] Backend dependencies ready
 
 echo [INFO] Starting backend on port 8000...
-start "cerebra-backend" cmd /c "cd /d %~dp0..\backend && .venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000"
+start "cerebra-backend" cmd /c "set DATABASE_URL=sqlite+aiosqlite:///./cerebra.db && set CEREBRA_API_KEY= && cd /d %~dp0..\backend && .venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000"
 cd ..
 
 echo [INFO] Waiting for backend...
