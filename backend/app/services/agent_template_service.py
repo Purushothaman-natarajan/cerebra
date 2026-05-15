@@ -13,7 +13,7 @@ DEFAULT_TEMPLATES = [
         "role": "research",
         "system_prompt": "You are a research assistant. Search the web, fetch URL metadata, and synthesize findings into clear summaries. Use calculator for numerical analysis.",
         "tools": ["web_search", "calculator", "url_info"],
-        "model": "gemini-2.0-flash", "memory_enabled": False, "max_iterations": 10,
+        "model": "", "memory_enabled": False, "max_iterations": 10,
         "guardrails": {"blocked_topics": [], "max_tokens": 4096},
     },
     {
@@ -21,7 +21,7 @@ DEFAULT_TEMPLATES = [
         "role": "writer",
         "system_prompt": "You are a creative content writer. Research topics via web search, analyze text structure, and produce well-formatted articles, blog posts, or documentation.",
         "tools": ["web_search", "text_analyzer"],
-        "model": "gemini-2.0-flash", "memory_enabled": False, "max_iterations": 10,
+        "model": "", "memory_enabled": False, "max_iterations": 10,
         "guardrails": {"blocked_topics": [], "max_tokens": 8192},
     },
     {
@@ -29,7 +29,7 @@ DEFAULT_TEMPLATES = [
         "role": "analyst",
         "system_prompt": "You are a data analyst. Analyze text statistics, perform calculations, manipulate JSON data, and present findings with clear numbers and insights.",
         "tools": ["calculator", "text_analyzer", "json_tool"],
-        "model": "gemini-2.0-flash", "memory_enabled": False, "max_iterations": 15,
+        "model": "", "memory_enabled": False, "max_iterations": 15,
         "guardrails": {"blocked_topics": [], "max_tokens": 4096},
     },
     {
@@ -37,7 +37,7 @@ DEFAULT_TEMPLATES = [
         "role": "coder",
         "system_prompt": "You are a senior code reviewer. Search for best practices, fetch documentation URLs, run small Python checks when useful, analyze code quality, and provide constructive feedback.",
         "tools": ["web_search", "url_info", "code_interpreter"],
-        "model": "gemini-2.0-flash", "memory_enabled": False, "max_iterations": 10,
+        "model": "", "memory_enabled": False, "max_iterations": 10,
         "guardrails": {"blocked_topics": [], "max_tokens": 8192},
     },
     {
@@ -45,7 +45,7 @@ DEFAULT_TEMPLATES = [
         "role": "security",
         "system_prompt": "You are a security analyst. Investigate CVEs, explain impact and mitigations, use CIRCL CVE lookup for vulnerability details, and run small Python snippets for parsing or scoring tasks.",
         "tools": ["circl_cve", "web_search", "url_info", "code_interpreter"],
-        "model": "gemini-2.0-flash", "memory_enabled": False, "max_iterations": 12,
+        "model": "", "memory_enabled": False, "max_iterations": 12,
         "guardrails": {"blocked_topics": [], "max_tokens": 8192},
     },
     {
@@ -53,7 +53,7 @@ DEFAULT_TEMPLATES = [
         "role": "support",
         "system_prompt": "You are a helpful customer support agent. Answer questions, check current time for availability, and search the knowledge base via web search.",
         "tools": ["web_search", "current_time"],
-        "model": "gemini-2.0-flash", "memory_enabled": True, "max_iterations": 8,
+        "model": "", "memory_enabled": True, "max_iterations": 8,
         "guardrails": {"blocked_topics": ["politics", "nsfw"], "max_tokens": 4096},
     },
     {
@@ -61,7 +61,7 @@ DEFAULT_TEMPLATES = [
         "role": "research",
         "system_prompt": "You are a research analyst. Gather information from multiple web sources, fetch detailed URL metadata, and analyze text to produce comprehensive research reports.",
         "tools": ["web_search", "url_info", "text_analyzer"],
-        "model": "gemini-2.0-flash", "memory_enabled": False, "max_iterations": 15,
+        "model": "", "memory_enabled": False, "max_iterations": 15,
         "guardrails": {"blocked_topics": [], "max_tokens": 8192},
     },
     {
@@ -69,7 +69,7 @@ DEFAULT_TEMPLATES = [
         "role": "coder",
         "system_prompt": "You are a JSON transformation specialist. Validate, format, extract, and manipulate JSON data. Use calculator for any numerical transformations.",
         "tools": ["json_tool", "calculator"],
-        "model": "gemini-2.0-flash", "memory_enabled": False, "max_iterations": 10,
+        "model": "", "memory_enabled": False, "max_iterations": 10,
         "guardrails": {"blocked_topics": [], "max_tokens": 4096},
     },
     {
@@ -77,7 +77,15 @@ DEFAULT_TEMPLATES = [
         "role": "research",
         "system_prompt": "You search multiple sources, cross-reference URL metadata, and crawl web pages to gather comprehensive information. Great for competitive research and fact-checking.",
         "tools": ["web_search", "url_info", "web_crawler"],
-        "model": "gemini-2.0-flash", "memory_enabled": False, "max_iterations": 15,
+        "model": "", "memory_enabled": False, "max_iterations": 15,
+        "guardrails": {"blocked_topics": [], "max_tokens": 8192},
+    },
+    {
+        "name": "Doc AI",
+        "role": "doc_ai",
+        "system_prompt": "You are a document AI. Index documents into a vector DB and answer questions using retrieval augmented generation. Use qdrant_search for retrieval and format responses clearly.",
+        "tools": ["qdrant_index", "qdrant_search"],
+        "model": "", "memory_enabled": False, "max_iterations": 8,
         "guardrails": {"blocked_topics": [], "max_tokens": 8192},
     },
 ]

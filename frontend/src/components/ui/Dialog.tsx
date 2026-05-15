@@ -15,6 +15,8 @@ interface DialogProps {
 export default function Dialog({ open, onClose, title, children, className }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     if (open) {
@@ -29,7 +31,7 @@ export default function Dialog({ open, onClose, title, children, className }: Di
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
+      if (e.key === "Escape") onCloseRef.current()
       if (e.key === "Tab" && dialogRef.current) {
         const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -47,10 +49,17 @@ export default function Dialog({ open, onClose, title, children, className }: Di
     }
     if (open) {
       document.addEventListener("keydown", handler)
-      setTimeout(() => dialogRef.current?.querySelector<HTMLElement>("button")?.focus(), 50)
     }
     return () => document.removeEventListener("keydown", handler)
-  }, [open, onClose])
+  }, [open])
+
+  // Auto-focus first button when dialog opens — isolated effect so parent re-renders
+  // (which recreate onClose) do not cause focus-stealing on every keystroke.
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => dialogRef.current?.querySelector<HTMLElement>("button")?.focus(), 50)
+    }
+  }, [open])
 
   if (!open) return null
 

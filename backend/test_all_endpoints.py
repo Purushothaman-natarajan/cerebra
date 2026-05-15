@@ -2,9 +2,8 @@
 import os
 import sys
 
-# Force SQLite for testing
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_endpoints.db"
-os.environ["CEREBRA_API_KEY"] = ""
+# NOTE: set test-specific envvars inside the run_tests function so importing this
+# module does not mutate the global environment for other tests.
 
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -23,6 +22,9 @@ def fail(msg): print(f"  FAIL {msg}")
 import asyncio
 
 async def run_tests():
+    # Force SQLite for testing and ensure auth not required during these checks
+    os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_endpoints.db"
+    os.environ["CEREBRA_API_KEY"] = ""
     # Use SQLite engine for tests
     engine = create_async_engine("sqlite+aiosqlite:///./test_endpoints.db", echo=False)
     async with engine.begin() as conn:
@@ -160,4 +162,5 @@ async def run_tests():
     if os.path.exists("test_endpoints.db"): os.remove("test_endpoints.db")
     print("Done.")
 
-asyncio.run(run_tests())
+if __name__ == "__main__":
+    asyncio.run(run_tests())

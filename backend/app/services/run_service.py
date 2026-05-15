@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime, timezone
+import logging
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +21,7 @@ async def get_run(db: AsyncSession, run_id: str) -> Run | None:
 
 
 async def create_run(db: AsyncSession, workflow_id: str) -> Run:
-    run = Run(workflow_id=uuid.UUID(workflow_id), status="pending")
+    run = Run(workflow_id=uuid.UUID(workflow_id), status="pending", started_at=datetime.now(timezone.utc))
     db.add(run)
     await db.flush()
     return run
@@ -53,11 +54,48 @@ async def clear_runs(db: AsyncSession) -> int:
     return result.rowcount or 0
 
 
-async def add_run_event(db: AsyncSession, run_id: str, event_type: str, agent_id: str, payload: dict) -> RunEvent:
-    event = RunEvent(run_id=uuid.UUID(run_id), type=event_type, agent_id=agent_id, payload=payload)
-    db.add(event)
-    await db.flush()
-    return event
+async def add_run_event(db: AsyncSession | None, run_id: str, event_type: str, agent_id: str, payload: dict) -> RunEvent:
+    """Persist a run event.
+
+    Tries to use the provided DB session first (if any). If that fails or no
+    session was provided, opens an independent short-lived session to ensure
+    the event is durably committed so UI polling can observe it even when the
+    request-scoped session isn't available.
+    """
+    logger = logging.getLogger(__name__)
+
+    # First attempt: use provided session if available
+    if db is not None:
+        try:
+            event = RunEvent(run_id=uuid.UUID(run_id), type=event_type, agent_id=agent_id, payload=payload)
+            db.add(event)
+            await db.flush()
+            return event
+        except Exception as e:
+            logger.exception("add_run_event: failed with provided session, falling back to new session: %s", e)
+
+    # Fallback: create an independent session so the event is committed immediately
+    try:
+        # Import here to avoid import cycles during startup
+        from app.db import async_session_factory
+
+        event = None
+        async with async_session_factory() as session:
+            try:
+                evt = RunEvent(run_id=uuid.UUID(run_id), type=event_type, agent_id=agent_id, payload=payload)
+                session.add(evt)
+                await session.commit()
+                await session.refresh(evt)
+                event = evt
+            except Exception as e:
+                logger.exception("add_run_event: failed to persist event in fallback session: %s", e)
+                # Re-raise so callers are aware when persistence fails completely
+                raise
+        return event
+    except Exception:
+        # If even the fallback failed, bubble up the error after logging
+        logger.exception("add_run_event: both primary and fallback persistence failed for run_id=%s", run_id)
+        raise
 
 
 async def update_run_tokens(

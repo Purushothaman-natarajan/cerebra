@@ -1,21 +1,44 @@
+# --- Dependencies ---
 node_modules/
+.venv/
+*.egg-info/
+
+# --- Python ---
 __pycache__/
 *.pyc
-.env
-*.db
-dist/
 .pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- Build output ---
+dist/
+*.db
+*.pid
+
+# --- Environment ---
+.env
+.env.local
+.env.production
+.env.staging
+
+# --- IDE ---
 .vscode/
-scripts/logs/
-*.log
+.idea/
+*.swp
+*.swo
+
+# --- OS ---
 .DS_Store
+Thumbs.db
+
+# --- Secrets ---
 secrets/
 credentials*
 *.pem
 *.key
-.env.local
-.env.production
-*.egg-info/
-.python-version
-*.pid
-backend/start_dev.py
+
+# --- Logs ---
+scripts/logs/
+*.log

@@ -37,9 +37,26 @@ export default function WorkflowsPage() {
   const [testResult, setTestResult] = useState<{ run: Run; loading: boolean } | null>(null)
   const [templateModels, setTemplateModels] = useState<Record<string, string>>({})
 
+  // Build model options from available provider models and include any models
+  // referenced by the selected template so the template's model appears in
+  // the dropdown even if no provider currently exposes it.
+  // include models from providers
+  const providerModelOptions = availableModels?.map((m) => ({ value: m.model, label: m.model, group: m.provider_name })) ?? []
+  // include models referenced by the selected template (if any)
+  const templateModelsFromTmpl = (selectedTemplate?.nodes ?? [])
+    .filter((n) => n.type === "agent")
+    .map((n) => n.config?.model as string)
+    .filter(Boolean)
+  // merge, preserving uniqueness
+  const mergedModelValues = Array.from(new Set([...providerModelOptions.map((o) => o.value), ...templateModelsFromTmpl]))
+  const mergedModelOptions = mergedModelValues.map((m) => {
+    const found = providerModelOptions.find((p) => p.value === m)
+    return found || { value: m, label: `${m} (template)`, group: "template" }
+  })
+
   const modelOptions = [
     { value: "", label: "Select model..." },
-    ...(availableModels?.map((m) => ({ value: m.model, label: m.model, group: m.provider_name })) ?? []),
+    ...mergedModelOptions,
   ]
   const firstModel = availableModels?.[0]?.model ?? ""
 
@@ -92,7 +109,10 @@ export default function WorkflowsPage() {
     setSelectedTemplate(tmpl)
     const defaults: Record<string, string> = {}
     for (const node of tmpl.nodes) {
-      if (node.type === "agent") defaults[node.id] = firstModel || (node.config?.model as string) || ""
+      if (node.type === "agent") {
+        // Prefer the model specified in the template; fall back to first available provider model
+        defaults[node.id] = (node.config?.model as string) || firstModel || ""
+      }
     }
     setTemplateModels(defaults)
   }
@@ -124,7 +144,10 @@ export default function WorkflowsPage() {
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-foreground text-sm">Workflows</h2>
-            <Button size="sm" onClick={handleNew}>+ New</Button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={handleNew}>+ New</Button>
+              <Button size="sm" variant="outline" onClick={() => { if (confirm("Clear all workflows? This cannot be undone.")) { fetch("/api/workflows", { method: "DELETE" }).then(() => location.reload()).catch(() => alert("Failed to clear workflows")) } }}>Clear All</Button>
+            </div>
           </div>
           <Button variant="secondary" size="sm" className="w-full gap-2" onClick={() => setShowTemplates(true)}>
             <FileText className="w-3.5 h-3.5" /> From Template

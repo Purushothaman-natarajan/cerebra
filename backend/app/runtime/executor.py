@@ -35,12 +35,29 @@ async def run_workflow(
     rid = run_id or str(uuid.uuid4())
     nodes = workflow_def.get("nodes", [])
     edges = workflow_def.get("edges", [])
-    entry_node = workflow_def.get("entry_node", nodes[0]["id"] if nodes else "")
+    entry_node = workflow_def.get("entry_node", "")
+
+    # Validate workflow structure before compilation
+    if not nodes or not entry_node:
+        event = {"run_id": rid, "type": "run_error", "timestamp": datetime.now(timezone.utc).isoformat(), "payload": {"error": "Workflow has no nodes or entry point — add agents to the canvas first"}}
+        await publish(f"run:events:{rid}", event)
+        if db:
+            await run_service.add_run_event(db, rid, "run_error", "system", event["payload"])
+        raise ValueError("Workflow has no nodes or entry point")
 
     agent_configs = {}
     for node in nodes:
         if node["type"] == "agent":
             agent_configs[node["id"]] = node.get("config", {})
+
+    # Populate router conditions from edges that have a condition field.
+    # Each edge with condition defines a routing rule: condition keyword -> target node.
+    router_conditions: dict[str, list[str]] = {}
+    for edge in edges:
+        cond = edge.get("condition")
+        target = edge.get("target", "")
+        if cond and target:
+            router_conditions.setdefault(target, []).append(cond)
 
     graph = compile_workflow(nodes, edges, entry_node)
 
@@ -49,7 +66,7 @@ async def run_workflow(
         "_next": "",
         "_current_agent_id": None,
         "_agent_configs": agent_configs,
-        "_router_conditions": {},
+        "_router_conditions": router_conditions,
         "run_id": rid,
         "_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost": 0.0},
         "_db": db,
@@ -62,8 +79,9 @@ async def run_workflow(
 
     try:
         result = await graph.ainvoke(initial_state)
-    except Exception:
-        event = {"run_id": rid, "type": "run_error", "timestamp": datetime.now(timezone.utc).isoformat(), "payload": {"error": "Workflow execution failed"}}
+    except Exception as exc:
+        err_msg = f"Workflow execution failed: {exc}"
+        event = {"run_id": rid, "type": "run_error", "timestamp": datetime.now(timezone.utc).isoformat(), "payload": {"error": err_msg}}
         await publish(f"run:events:{rid}", event)
         if db:
             await run_service.add_run_event(db, rid, "run_error", "system", event["payload"])

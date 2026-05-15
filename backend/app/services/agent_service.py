@@ -98,7 +98,10 @@ async def test_agent(db: AsyncSession, agent_id: str, input_message: str) -> dic
 
     messages = [{"role": "user", "content": input_message}]
     system_prompt = agent.system_prompt or ""
-    model = agent.model or "gemini-2.0-flash"
+    model = agent.model or ""
+    if not model:
+        return {"ok": False, "output": "Error: No model selected for agent. Configure a provider and select a model before testing.", "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost": 0.0, "duration_ms": 0}
+    import re
     blocked_topics = agent.guardrails.get("blocked_topics", []) if agent.guardrails else []
 
     usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost": 0.0}
@@ -109,7 +112,7 @@ async def test_agent(db: AsyncSession, agent_id: str, input_message: str) -> dic
         max_iterations = agent.max_iterations or 10
         while iteration < max_iterations:
             iteration += 1
-            result, tool_call, call_usage = await call_llm_with_tools(model, system_prompt, messages, tool_defs)
+            result, tool_call, call_usage = await call_llm_with_tools(model, system_prompt, messages, tool_defs, db=db)
 
             if call_usage:
                 usage["prompt_tokens"] += call_usage.get("prompt_tokens", 0)
@@ -127,8 +130,9 @@ async def test_agent(db: AsyncSession, agent_id: str, input_message: str) -> dic
                     tool_result = await fn(result)
                     messages.append({"role": "tool", "content": tool_result, "name": tool_call})
             else:
+                # Word-boundary guardrails check
                 for topic in blocked_topics:
-                    if topic.lower() in result.lower():
+                    if re.search(rf"\b{re.escape(topic.lower())}\b", result.lower()):
                         result = f"Blocked response (contains topic: {topic})"
                         break
                 messages.append({"role": "assistant", "content": result})

@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext"
 import ThemeToggle from "@/components/ui/ThemeToggle"
 import AccentPicker from "@/components/ui/AccentPicker"
 import { HelpButton } from "@/components/ui"
+import ErrorBoundary from "@/components/ui/ErrorBoundary"
 
 // Lazy-loaded pages — ReactFlow and Recharts chunks are loaded on demand
 const Dashboard = lazy(() => import("@/pages/Dashboard"))
@@ -146,19 +147,19 @@ function AppContent() {
         <Suspense fallback={<Loading />}>
           {isFullLayout ? (
             <Routes>
-              <Route path="/workflows" element={<FullPage><WorkflowsPage /></FullPage>} />
-              <Route path="/runs" element={<FullPage><RunsPage /></FullPage>} />
+              <Route path="/workflows" element={<ErrorBoundary componentName="WorkflowsPage"><FullPage><WorkflowsPage /></FullPage></ErrorBoundary>} />
+              <Route path="/runs" element={<ErrorBoundary componentName="RunsPage"><FullPage><RunsPage /></FullPage></ErrorBoundary>} />
               <Route path="*" element={null} />
             </Routes>
           ) : (
             <Routes>
-              <Route path="/" element={<StandardPage><Dashboard /></StandardPage>} />
-              <Route path="/providers" element={<StandardPage><ProvidersPage /></StandardPage>} />
-              <Route path="/templates" element={<StandardPage><TemplatesPage /></StandardPage>} />
-              <Route path="/tools" element={<StandardPage><ToolsPage /></StandardPage>} />
-              <Route path="/agents" element={<StandardPage><AgentsPage /></StandardPage>} />
-              <Route path="/channels" element={<StandardPage><ChannelsPage /></StandardPage>} />
-              <Route path="/settings" element={<StandardPage><SettingsPage /></StandardPage>} />
+              <Route path="/" element={<ErrorBoundary componentName="Dashboard"><StandardPage><Dashboard /></StandardPage></ErrorBoundary>} />
+              <Route path="/providers" element={<ErrorBoundary componentName="ProvidersPage"><StandardPage><ProvidersPage /></StandardPage></ErrorBoundary>} />
+              <Route path="/templates" element={<ErrorBoundary componentName="TemplatesPage"><StandardPage><TemplatesPage /></StandardPage></ErrorBoundary>} />
+              <Route path="/tools" element={<ErrorBoundary componentName="ToolsPage"><StandardPage><ToolsPage /></StandardPage></ErrorBoundary>} />
+              <Route path="/agents" element={<ErrorBoundary componentName="AgentsPage"><StandardPage><AgentsPage /></StandardPage></ErrorBoundary>} />
+              <Route path="/channels" element={<ErrorBoundary componentName="ChannelsPage"><StandardPage><ChannelsPage /></StandardPage></ErrorBoundary>} />
+              <Route path="/settings" element={<ErrorBoundary componentName="SettingsPage"><StandardPage><SettingsPage /></StandardPage></ErrorBoundary>} />
             </Routes>
           )}
         </Suspense>

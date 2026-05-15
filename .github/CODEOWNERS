@@ -1,0 +1,17 @@
+# Global owners for all files
+* @cerebra-ai/maintainers
+
+# Backend ownership
+backend/ @cerebra-ai/backend
+
+# Frontend ownership
+frontend/ @cerebra-ai/frontend
+
+# Documentation
+*.md @cerebra-ai/docs
+
+# Infrastructure
+Dockerfile* @cerebra-ai/devops
+docker-compose* @cerebra-ai/devops
+.github/ @cerebra-ai/devops
+Makefile @cerebra-ai/devops
