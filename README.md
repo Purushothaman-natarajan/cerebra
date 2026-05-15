@@ -42,7 +42,7 @@ scripts\reset_and_start.bat  # Reset + restart
 
 **Manual:**
 ```bash
-cd backend && DATABASE_URL=sqlite+aiosqlite:///./orchid.db uvicorn app.main:app --reload --port 8000
+cd backend && DATABASE_URL=sqlite+aiosqlite:///./cerebra.db uvicorn app.main:app --reload --port 8000
 cd frontend && npm run dev
 ```
 

@@ -42,8 +42,8 @@
 
 ```bash
 # 1. Clone & configure
-git clone https://github.com/your-org/orchid.git
-cd orchid
+git clone https://github.com/your-org/cerebra.git.git
+cd cerebra
 cp .env.example .env
 nano .env   # add GEMINI_API_KEY, CEREBRA_API_KEY, ENCRYPTION_KEY
 
@@ -79,13 +79,13 @@ services:
     image: postgres:16-alpine
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-orchid}
+      POSTGRES_USER: ${POSTGRES_USER:-cerebra}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-orchid}
+      POSTGRES_DB: ${POSTGRES_DB:-cerebra}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orchid}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cerebra}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -104,7 +104,7 @@ services:
     build: ./backend
     restart: always
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-orchid}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-orchid}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-cerebra}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cerebra}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       CEREBRA_API_KEY: ${CEREBRA_API_KEY}
@@ -132,7 +132,7 @@ volumes:
 
 networks:
   default:
-    name: orchid-network
+    name: cerebra-network
 ```
 
 Run with:
@@ -176,7 +176,7 @@ Replace the frontend service with Caddy for automatic HTTPS:
 
 With `Caddyfile`:
 ```
-orchid.example.com {
+cerebra.example.com {
     reverse_proxy /api/* backend:8000
     reverse_proxy /ws/* backend:8000
     root * /usr/share/caddy

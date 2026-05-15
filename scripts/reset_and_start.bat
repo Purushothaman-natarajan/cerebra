@@ -39,7 +39,7 @@ echo  [OK] Port 8000 cleared
 REM ── Step 3: Clean temporary databases ──────────────────────────────────
 echo [3/6] Cleaning temporary databases...
 cd /d "%~dp0..\backend"
-del /q /f test_*.db orchid.db test_backend.db alembic_migration.db 2>nul
+del /q /f test_*.db cerebra.db test_backend.db alembic_migration.db 2>nul
 echo  [OK] Temp databases removed
 
 REM ── Step 4: Check .env file ────────────────────────────────────────────
@@ -59,7 +59,7 @@ if not exist .venv (
     echo  [INFO] Creating virtual environment...
     python -m venv .venv
 )
-set DATABASE_URL=sqlite+aiosqlite:///./orchid.db
+set DATABASE_URL=sqlite+aiosqlite:///./cerebra.db
 set GEMINI_API_KEY=
 set CEREBRA_API_KEY=
 set REDIS_URL=

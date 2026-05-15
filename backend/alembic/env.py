@@ -37,7 +37,7 @@ def _get_sync_url() -> str:
         url = config.get_main_option("sqlalchemy.url", "")
 
     if not url:
-        url = "sqlite+pysqlite:///./orchid.db"
+        url = "sqlite+pysqlite:///./cerebra.db"
 
     # Alembic needs a sync driver
     url = re.sub(r"\+(asyncpg|aiosqlite)", "+pysqlite", url)

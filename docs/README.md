@@ -54,7 +54,7 @@ cd backend
 uv venv                    # create virtual environment
 uv sync                    # install dependencies (or pip install -r requirements.txt)
 cp ../.env.example .env    # configure settings
-set DATABASE_URL=sqlite+aiosqlite:///./orchid.db   # use SQLite for dev
+set DATABASE_URL=sqlite+aiosqlite:///./cerebra.db   # use SQLite for dev
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
@@ -191,8 +191,8 @@ uv sync                      # install dependencies
 
 cp ../.env.example .env      # edit with your settings
 # Use SQLite for development (no PostgreSQL needed):
-set DATABASE_URL=sqlite+aiosqlite:///./orchid.db   # Windows
-export DATABASE_URL=sqlite+aiosqlite:///./orchid.db   # macOS/Linux
+set DATABASE_URL=sqlite+aiosqlite:///./cerebra.db   # Windows
+export DATABASE_URL=sqlite+aiosqlite:///./cerebra.db   # macOS/Linux
 
 uv run uvicorn app.main:app --reload --port 8000
 ```

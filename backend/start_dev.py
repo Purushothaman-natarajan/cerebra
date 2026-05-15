@@ -8,7 +8,7 @@ import os, subprocess, sys, time, urllib.request
 
 def main():
     """Start the development server with SQLite backend."""
-    os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./orchid.db"
+    os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./cerebra.db"
     os.environ["CEREBRA_API_KEY"] = ""
 
     port = 8000
@@ -24,7 +24,7 @@ def main():
         print(f"\nAPI: http://localhost:{port}")
         print(f"Docs: http://localhost:{port}/docs")
         print(f"\nPID: {proc.pid} | Kill with: taskkill /f /pid {proc.pid}")
-        with open("orchid.pid", "w") as f:
+        with open("cerebra.pid", "w") as f:
             f.write(str(proc.pid))
     except Exception as e:
         print(f"Failed: {e}")
