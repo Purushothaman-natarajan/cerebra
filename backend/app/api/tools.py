@@ -30,11 +30,11 @@ _TOOL_EXAMPLE = {
 
 
 @router.get("", response_model=list[dict],
-    responses=list_response_example([_TOOL_EXAMPLE, {"id": None, "tool_id": "web_search", "name": "web_search", "description": "Search the web", "tool_type": "builtin", "is_builtin": True}]))
+    responses=list_response_example([_TOOL_EXAMPLE, {"id": "web_search", "tool_id": "web_search", "name": "web_search", "description": "Search the web", "tool_type": "builtin", "is_builtin": True}]))
 async def list_tools(db: AsyncSession = Depends(get_db)):
     """List all tools: built-in + custom. No input required."""
     builtin = [
-        {"id": None, "tool_id": t["name"], "name": t["name"], "description": t["description"], "tool_type": "builtin", "is_builtin": True}
+        {"id": t["name"], "tool_id": t["name"], "name": t["name"], "description": t["description"], "tool_type": "builtin", "is_builtin": True}
         for t in get_tool_definitions()
     ]
     try:
