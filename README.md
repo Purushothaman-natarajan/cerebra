@@ -9,24 +9,15 @@ Multi-agent workflows · Visual canvas · Multi-LLM · Custom tools · Telegram
 [![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](docs/ARCHITECTURE.md)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](docs/ARCHITECTURE.md)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](docs/ARCHITECTURE.md)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](docs/ARCHITECTURE.md)
 
 </div>
 
----
-
 ## Quick Start
 
-```bash
-cp .env.example .env
-docker compose up --build
-```
+**Windows:** `scripts\reset_and_start.bat`
+**macOS / Linux:** `./scripts/run.sh`
 
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:5173 |
-| Backend | http://localhost:8000 |
-| API Docs | http://localhost:8000/docs |
+Then open **http://localhost:5173** (frontend) · http://localhost:8000 (API) · http://localhost:8000/docs (Swagger)
 
 ---
 
@@ -41,16 +32,6 @@ docker compose up --build
 | 📡 | **Telegram Bots** | Connect bots to trigger workflows via webhook |
 | 📋 | **Pre-built Templates** | 10 agent presets + 4 workflow blueprints |
 | 🔒 | **Encrypted at Rest** | API keys encrypted with Fernet + PBKDF2 |
-
----
-
-## Local Development
-
-| Platform | Command |
-|----------|---------|
-| **Windows** | `scripts\reset_and_start.bat` |
-| **macOS / Linux** | `./scripts/run.sh` |
-| **Manual** | `cd backend && DATABASE_URL=sqlite+aiosqlite:///./cerebra.db uvicorn app.main:app --reload --port 8000` |
 
 ---
 
