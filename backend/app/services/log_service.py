@@ -3,9 +3,20 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models.log import Log
+
+
+def _parse_timestamp(ts: str | None) -> datetime | None:
+    """Parse an ISO-8601 timestamp string to a datetime object."""
+    if not ts:
+        return datetime.now(timezone.utc)
+    try:
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return dt.astimezone(timezone.utc)
+    except (ValueError, AttributeError):
+        return datetime.now(timezone.utc)
 
 
 async def create_log(db: AsyncSession, *, run_id: str | None, timestamp: str | None, level: str | None,
@@ -13,7 +24,7 @@ async def create_log(db: AsyncSession, *, run_id: str | None, timestamp: str | N
                      details: dict | None) -> Log:
     log = Log(
         run_id=run_id,
-        timestamp=timestamp,
+        timestamp=_parse_timestamp(timestamp),
         level=level or "info",
         source=source or "frontend",
         component=component,

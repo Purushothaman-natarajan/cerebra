@@ -17,7 +17,7 @@ from app.services import log_service
 from datetime import datetime
 
 from app.schemas import ExField
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Any
 
 from app.bus import publish
@@ -39,14 +39,14 @@ class LogEntry(BaseModel):
         "details": {"tool": "web_search", "input": "Cerebra"}
     }})
 
-    timestamp: str = ExField(example="2026-05-14T12:00:00+00:00", description="ISO-8601 timestamp")
-    level: str = ExField(example="info", description="log level")
-    source: str = ExField(example="frontend", description="originating system")
-    component: str | None = ExField(example="ToolTestDialog", description="UI component or module")
-    action: str | None = ExField(example="tool_test", description="semantic action name")
-    message: str | None = ExField(example="Tool test started", description="human friendly message")
-    run_id: str | None = ExField(example=None, description="Optional run UUID to correlate with a run")
-    details: dict[str, Any] | None = ExField(example={"tool": "web_search", "input": "Cerebra"}, description="Opaque details object")
+    timestamp: str = Field(..., description="ISO-8601 timestamp", examples=["2026-05-14T12:00:00+00:00"], json_schema_extra={"example": "2026-05-14T12:00:00+00:00"})
+    level: str = Field(..., description="log level", examples=["info"], json_schema_extra={"example": "info"})
+    source: str = Field(..., description="originating system", examples=["frontend"], json_schema_extra={"example": "frontend"})
+    component: str | None = Field(default=None, description="UI component or module", examples=["ToolTestDialog"])
+    action: str | None = Field(default=None, description="semantic action name", examples=["tool_test"])
+    message: str | None = Field(default=None, description="human friendly message", examples=["Tool test started"])
+    run_id: str | None = Field(default=None, description="Optional run UUID to correlate with a run", examples=["550e8400-e29b-41d4-a716-446655440002"])
+    details: dict[str, Any] | None = Field(default=None, description="Opaque details object", examples=[{"tool": "web_search", "input": "Cerebra"}])
 
 
 @router.post("", status_code=201)
@@ -103,7 +103,7 @@ async def list_logs(run_id: str | None = Query(None), start_ts: str | None = Que
     except Exception:
         raise HTTPException(400, "start_ts and end_ts must be ISO-8601 datetimes")
 
-    logs = await log_service.query_logs(db, run_id=run_id, start=start, end=end, limit=limit)
+    logs = await log_service.query_logs(db, run_id=run_id, start=start, end=end, limit=min(limit, 1000))
     out = []
     for l in logs:
         out.append({
