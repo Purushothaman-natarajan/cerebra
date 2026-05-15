@@ -1,12 +1,32 @@
 #!/usr/bin/env python3
-"""Telegram bot token diagnostic - tests the endpoint directly and reports findings."""
+"""Telegram bot token diagnostic - tests the endpoint directly and reports findings.
+
+Usage:
+    python telegram_diagnostic.py YOUR_BOT_TOKEN
+
+Or set the TELEGRAM_BOT_TOKEN environment variable.
+"""
 
 import sys
+import os
 import json
 import urllib.request
 import urllib.error
 
-TOKEN = "YOUR_BOT_TOKEN"
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or (sys.argv[1] if len(sys.argv) > 1 else "")
+
+if not TOKEN:
+    print("=" * 60)
+    print("CEREBRA TELEGRAM DIAGNOSTIC")
+    print("=" * 60)
+    print()
+    print("ERROR: No bot token provided.")
+    print()
+    print("Usage:")
+    print(f"  python {os.path.basename(__file__)} YOUR_BOT_TOKEN")
+    print(f"  set TELEGRAM_BOT_TOKEN=YOUR_TOKEN && python {os.path.basename(__file__)}")
+    print()
+    sys.exit(1)
 
 PASS = "[PASS]"
 FAIL = "[FAIL]"
@@ -31,6 +51,8 @@ except Exception as e:
     sys.exit(1)
 
 # Step 2: Is the /channels/test route registered?
+has_route = False
+data = {}
 print("\n[2/4] Checking /channels/test route in OpenAPI schema...")
 try:
     req = urllib.request.Request("http://localhost:8000/openapi.json")
@@ -88,14 +110,14 @@ print("\n[4/4] Testing token DIRECTLY against Telegram API...")
 try:
     req = urllib.request.Request(f"https://api.telegram.org/bot{TOKEN}/getMe")
     resp = urllib.request.urlopen(req, timeout=15)
-    data = json.loads(resp.read())
-    if data.get("ok"):
-        bot = data.get("result", {})
+    direct = json.loads(resp.read())
+    if direct.get("ok"):
+        bot = direct.get("result", {})
         print(f"  {PASS} Token VALID with Telegram directly!")
         print(f"     Bot: @{bot.get('username', 'unknown')}")
         print(f"     Name: {bot.get('first_name', 'unknown')}")
     else:
-        print(f"  {FAIL} Token REJECTED by Telegram: {data.get('description', 'unknown')}")
+        print(f"  {FAIL} Token REJECTED by Telegram: {direct.get('description', 'unknown')}")
 except Exception as e:
     print(f"  {SKIP} Could not test directly (network may be restricted): {e}")
 
