@@ -25,7 +25,7 @@ async def verify_api_key(request: Request) -> JSONResponse | None:
 
     Returns a JSON 401 response if auth fails, None if allowed.
     """
-    if not settings.cerebra_api_key:
+    if not settings.cerebra_api_key or settings.cerebra_api_key == "no_key":
         return None
     if request.url.path in _PUBLIC_PATHS or request.url.path.startswith(("/docs/", "/redoc/")):
         return None
@@ -49,7 +49,7 @@ async def verify_api_key(request: Request) -> JSONResponse | None:
 
 async def verify_ws_key(websocket: WebSocket) -> bool:
     """Validates WebSocket connections via ?token= query parameter."""
-    if not settings.cerebra_api_key:
+    if not settings.cerebra_api_key or settings.cerebra_api_key == "no_key":
         return True
     token = websocket.query_params.get("token")
     if token == settings.cerebra_api_key:
