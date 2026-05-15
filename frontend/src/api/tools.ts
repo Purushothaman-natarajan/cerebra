@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/components/ui/Toast"
 import { apiFetch } from "./client"
 
-export interface Tool { id?: string; name: string; description: string; tool_type: string; config?: Record<string, unknown>; is_builtin: boolean; created_at?: string }
+export interface Tool { id?: string; tool_id?: string; name: string; description: string; tool_type: string; config?: Record<string, unknown>; is_builtin: boolean; created_at?: string }
 export interface ToolFormData { name: string; description: string; tool_type: "http" | "python" | "webhook"; config: { url?: string; method?: string; headers?: Record<string, string>; parameters?: { name: string; type: "string" | "number" | "boolean"; description: string }[]; code?: string } }
 
 const fetchTools = () => apiFetch<Tool[]>("/tools")
