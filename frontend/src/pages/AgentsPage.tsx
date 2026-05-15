@@ -41,8 +41,12 @@ export default function AgentsPage() {
   }, [openForm])
 
   const handleSave = (data: AgentFormData) => {
-    if (editingAgent) updateAgent.mutate({ id: editingAgent.id, data })
-    else createAgent.mutate(data)
+    const isDefault = editingAgent ? (editingAgent.data as any).is_default : false
+    if (editingAgent && !isDefault) {
+      updateAgent.mutate({ id: editingAgent.id, data })
+    } else {
+      createAgent.mutate(data)
+    }
     closeForm()
   }
 

@@ -27,6 +27,7 @@ export interface Agent {
   memory_enabled: boolean
   max_iterations: number
   guardrails: { blocked_topics?: string[]; max_tokens?: number }
+  is_default?: boolean
   created_at: string
   updated_at: string
 }
