@@ -4,14 +4,40 @@ import { useState } from "react"
 import { useProviders, useCreateProvider, useDeleteProvider, usePresets } from "@/api/providers"
 import type { ProviderFormData, Preset } from "@/api/providers"
 import { Button, Card, Badge, Dialog, Input, SkeletonRow } from "@/components/ui"
-import { CheckCircle, XCircle, Shield, ShieldCheck, Eye, EyeOff, Wifi } from "lucide-react"
+import { CheckCircle, XCircle, Shield, ShieldCheck, Eye, EyeOff, Wifi, ChevronDown, ChevronUp } from "lucide-react"
 import { apiFetch } from "@/api/client"
+
+function ModelList({ models }: { models: string[] }) {
+  const [showAll, setShowAll] = useState(false)
+  const maxVisible = 10
+  const visible = showAll ? models : models.slice(0, maxVisible)
+  const hasMore = models.length > maxVisible
+  return (
+    <div className="flex flex-wrap gap-1 mt-1.5">
+      {visible.map((m) => (
+        <span key={m} className="text-[10px] px-2 py-0.5 rounded-full bg-accent-soft" style={{ color: "var(--accent)" }}>
+          {m}
+        </span>
+      ))}
+      {hasMore && (
+        <button
+          onClick={() => setShowAll(!showAll)}
+          className="text-[10px] px-2 py-0.5 rounded-full text-muted hover:text-accent hover:bg-accent-soft transition-colors flex items-center gap-0.5"
+        >
+          {showAll ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          {showAll ? "Show less" : `${models.length - maxVisible} more`}
+        </button>
+      )}
+    </div>
+  )
+}
 
 export default function ProvidersPage() {
   const { data: providers, isLoading } = useProviders()
   const { data: presets } = usePresets()
   const createProvider = useCreateProvider()
   const deleteProvider = useDeleteProvider()
+  // Models list expand/collapse handled by ModelList component internally
 
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<ProviderFormData>({ name: "", provider_type: "custom", base_url: "", api_key: "", models: [] })
@@ -76,26 +102,31 @@ export default function ProvidersPage() {
         {providers?.map((p) => {
           const isLocal = p.provider_type === "ollama" || p.base_url.includes("localhost")
           return (
-            <Card key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-              <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
-                <div className={`w-2.5 h-2.5 rounded-full mt-1 sm:mt-0 shrink-0 ${p.is_active ? "bg-emerald-500" : "bg-gray-300"}`} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-foreground">{p.name}</span>
-                    <Badge variant="info">{p.provider_type}</Badge>
-                    {isLocal ? (
-                      <Badge variant="warning" className="gap-1"><Wifi className="w-3 h-3" /> Self-hosted</Badge>
-                    ) : (
-                      <Badge variant="success" className="gap-1"><ShieldCheck className="w-3 h-3" /> Encrypted</Badge>
+            <Card key={p.id} className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${p.is_active ? "bg-emerald-500" : "bg-gray-300"}`} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-foreground">{p.name}</span>
+                      <Badge variant="info" className="text-[10px]">{p.provider_type}</Badge>
+                      {isLocal ? (
+                        <Badge variant="warning" className="gap-1 text-[10px]"><Wifi className="w-3 h-3" /> Self-hosted</Badge>
+                      ) : (
+                        <Badge variant="success" className="gap-1 text-[10px]"><ShieldCheck className="w-3 h-3" /> Encrypted</Badge>
+                      )}
+                    </div>
+                    {p.models && p.models.length > 0 && <ModelList models={p.models} />}
+                    {(!p.models || p.models.length === 0) && (
+                      <p className="text-xs text-muted mt-1 italic">No models synced</p>
                     )}
+                    <p className="text-xs text-muted mt-1.5 font-mono flex items-center gap-1.5">
+                      <Shield className="w-3 h-3 text-emerald-500" /> key: {'•'.repeat(16)}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted mt-1 truncate">{p.models?.length ? p.models.slice(0, 3).join(" · ") : "No models synced"}</p>
-                  <p className="text-xs text-muted mt-0.5 font-mono truncate flex items-center gap-1.5">
-                    <Shield className="w-3 h-3 text-emerald-500" /> key: {'•'.repeat(16)}
-                  </p>
                 </div>
+                <Button variant="ghost" size="sm" onClick={() => { if (confirm("Remove?")) deleteProvider.mutate(p.id) }} className="text-rose-500 shrink-0">Remove</Button>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => { if (confirm("Remove?")) deleteProvider.mutate(p.id) }} className="text-rose-500 shrink-0">Remove</Button>
             </Card>
           )
         })}
