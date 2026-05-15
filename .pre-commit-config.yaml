@@ -44,3 +44,13 @@ repos:
     hooks:
       - id: codespell
         args: ["--skip=node_modules,dist,.venv,*.lock", "--ignore-words-list=cerebra"]
+
+  # Custom secret scanning hook (local)
+  - repo: local
+    hooks:
+      - id: secret-scan
+        name: Hardcoded secret detection
+        entry: python scripts/pre_commit_secret_scan.py
+        language: python
+        types: [text]
+        exclude: "package-lock.json|uv.lock|*.lock"
