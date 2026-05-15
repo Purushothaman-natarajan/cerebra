@@ -59,18 +59,18 @@ if not exist .venv (
     echo  [INFO] Creating virtual environment...
     python -m venv .venv
 )
-set DATABASE_URL=sqlite+aiosqlite:///./cerebra.db
-set GEMINI_API_KEY=
-set CEREBRA_API_KEY=
-set REDIS_URL=
+if not exist .venv\Lib\site-packages\uvicorn (
+    echo  [INFO] Installing dependencies...
+    .venv\Scripts\python.exe -m pip install -r requirements.txt >nul 2>&1
+)
 
-start "cerebra-backend" cmd /c "uvicorn app.main:app --reload --port 8000"
+start "cerebra-backend" cmd /c "cd /d %~dp0..\backend && .venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000"
 
 REM Wait for backend to be ready
 echo  [WAIT] Waiting for backend to start...
 set ready=0
 for /l %%i in (1,1,30) do (
-    >nul 2>&1 powershell -c "try { (Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing).StatusCode -eq 200 } catch { $false }"
+    >nul 2>&1 powershell -c "try { $r = Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing -TimeoutSec 2; $r.StatusCode -eq 200 } catch { $false }"
     if not errorlevel 1 (
         set ready=1
         goto :backend_ready

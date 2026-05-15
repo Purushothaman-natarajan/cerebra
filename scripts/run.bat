@@ -56,13 +56,13 @@ if %errorlevel% neq 0 (
 echo [OK] Backend dependencies ready
 
 echo [INFO] Starting backend on port 8000...
-start "cerebra-backend" cmd /c "uv run uvicorn app.main:app --reload --port 8000"
+start "cerebra-backend" cmd /c "cd /d %~dp0..\backend && .venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000"
 cd ..
 
 echo [INFO] Waiting for backend...
 set ready=0
 for /l %%i in (1,1,30) do (
-    >nul 2>&1 powershell -c "try { (Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing).StatusCode -eq 200 } catch { $false }"
+    >nul 2>&1 powershell -c "try { $r = Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing -TimeoutSec 2; $r.StatusCode -eq 200 } catch { $false }"
     if not errorlevel 1 (
         set ready=1
         goto :backend_ready
