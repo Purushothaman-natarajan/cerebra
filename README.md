@@ -1,16 +1,12 @@
-<div align="center">
-
 # Cerebra‑AI
 
-**AI Agent Orchestration Platform**
+AI Agent Orchestration Platform
 
 Multi-agent workflows · Visual canvas · Multi-LLM · Custom tools · Telegram
 
 [![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](docs/ARCHITECTURE.md)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](docs/ARCHITECTURE.md)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](docs/ARCHITECTURE.md)
-
-</div>
 
 ## Quick Start
 
