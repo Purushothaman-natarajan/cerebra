@@ -111,7 +111,13 @@ async def _crawl_with_bs4(url: str, max_chars: int) -> str:
     if await _is_private_url(url):
         return f"Error: Cannot crawl private/internal URL: {url}"
     async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
-        resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0 (compatible; Cerebra-AI/1.0)"})
+        resp = await client.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"},
+        )
+        if resp.status_code == 403:
+            body = resp.text[:300]
+            return f"Error: Site returned 403 Forbidden — the website may be blocking automated requests. Details: {body}"
         resp.raise_for_status()
 
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -147,10 +153,10 @@ async def web_crawler(payload: str, max_chars: int = 5000) -> str:
     except ImportError:
         try:
             return await _crawl_with_bs4(url, options["max_chars"])
-        except Exception:
-            return f"Failed to crawl {url}"
+        except Exception as exc:
+            return f"Failed to crawl {url} — {exc}"
     except Exception:
         try:
             return await _crawl_with_bs4(url, options["max_chars"])
-        except Exception:
-            return f"Failed to crawl {url}"
+        except Exception as exc:
+            return f"Failed to crawl {url} — {exc}"
