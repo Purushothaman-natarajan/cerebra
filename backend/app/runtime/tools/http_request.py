@@ -30,7 +30,11 @@ async def _is_private_url(url: str) -> bool:
 
     loop = asyncio.get_event_loop()
     try:
-        addrs = await loop.getaddrinfo(host, None)
+        # Add timeout to DNS resolution to prevent hanging
+        addrs = await asyncio.wait_for(
+            loop.getaddrinfo(host, None),
+            timeout=5.0,
+        )
         for family, _, _, _, sockaddr in addrs:
             if family in (socket.AF_INET, socket.AF_INET6):
                 try:
@@ -39,7 +43,7 @@ async def _is_private_url(url: str) -> bool:
                         return True
                 except ValueError:
                     continue
-    except OSError:
+    except (OSError, asyncio.TimeoutError):
         return True
 
     return False

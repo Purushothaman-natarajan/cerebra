@@ -1,0 +1,28 @@
+# Local development overrides for Docker Compose.
+# Enables hot-reload for backend and frontend with mounted source code.
+#
+# Usage: docker compose -f docker-compose.yml -f docker-compose.override.yml up
+# (If the file is named docker-compose.override.yml, Docker picks it up automatically)
+
+services:
+  backend:
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./orchid.db
+      - LOG_LEVEL=DEBUG
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+  frontend:
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0 --port 80
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"

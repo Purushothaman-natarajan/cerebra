@@ -464,3 +464,27 @@ class AgentTestResult(BaseModel):
 class DeleteResponse(BaseModel):
     model_config = _example({"ok": True})
     ok: bool = Field(description="Always true on success.", examples=[True])
+
+
+# Logs
+class LogResponse(BaseModel):
+    model_config = _example({
+        "id": 1,
+        "run_id": "550e8400-e29b-41d4-a716-446655440002",
+        "timestamp": "2026-05-13T12:00:01+00:00",
+        "level": "info",
+        "source": "frontend",
+        "component": "ToolTestDialog",
+        "action": "tool_test",
+        "message": "Tool test started",
+        "details": {"tool": "web_search", "input": "Cerebra"},
+    })
+    id: int = Field(description="Log ID.")
+    run_id: str | None = Field(description="Optional run UUID.")
+    timestamp: str = Field(description="ISO-8601 timestamp")
+    level: str = Field(description="Log level")
+    source: str = Field(description="Origin")
+    component: str | None = Field(description="Component name")
+    action: str | None = Field(description="Semantic action")
+    message: str | None = Field(description="Human message")
+    details: dict = Field(description="Opaque details JSON")

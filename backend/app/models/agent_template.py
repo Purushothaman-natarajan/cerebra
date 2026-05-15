@@ -17,7 +17,7 @@ class AgentTemplate(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(255), nullable=False)
     system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
-    model: Mapped[str] = mapped_column(String(100), nullable=False, default="gemini-2.0-flash")
+    model: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     tools: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     memory_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     max_iterations: Mapped[int] = mapped_column(Integer, default=10)

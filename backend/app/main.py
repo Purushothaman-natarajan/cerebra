@@ -1,35 +1,88 @@
 """FastAPI application entry point.
 
-Initializes the database schema on startup, configures CORS and auth middleware,
-and registers all API routers under their respective prefixes.
+Configures structured logging, CORS, auth middleware, rate limiting,
+request-id tracing, and registers all API routers.
 
 Health check at /health is public (no auth).
 All other routes require Authorization: Bearer if CEREBRA_API_KEY is set.
 """
 
+import asyncio
+import logging
+import subprocess
+import sys
+import time
+import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from app.api import agent_templates, agents, channels, human, providers, runs, templates, tools, workflows, ws
+from app.api import agent_templates, agents, channels, human, providers, runs, templates, tools, workflows, ws, logs
 from app.auth import verify_api_key
 from app.config import settings
-from app.db import Base, engine
+from app.db import Base, engine, check_db_connection
+from app.logging_config import configure_logging, set_request_id, get_logger
 from app.openapi_patch import patch_openapi_schema
 from app.ratelimit import limit_middleware
 from app.scheduler import start_scheduler, stop_scheduler
 
+logger = get_logger(__name__)
+
+
+async def _run_migrations():
+    """Apply pending Alembic migrations via subprocess.
+
+    Falls back to create_all if Alembic is not available or fails
+    (e.g., during first-time setup with SQLite).
+    """
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, "-m", "alembic", "upgrade", "head",
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode == 0:
+            logger.info("Alembic migrations applied successfully")
+            return True
+        else:
+            stderr_text = stderr.decode().strip()
+            logger.warning("Alembic migration failed (falling back to create_all): %s", stderr_text)
+    except Exception as exc:
+        logger.warning("Could not run Alembic migrations: %s", exc)
+    return False
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Create all database tables on startup. Seed default agent templates if none exist."""
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-    except Exception as e:
-        import logging
-        logging.warning("Database unavailable at startup (%s). Tables will be created when DB is ready.", e)
+    """Application lifespan handler for startup and shutdown.
+    
+    On startup:
+    1. Configure structured logging
+    2. Run Alembic migrations (fall back to create_all)
+    3. Seed default agent templates
+    4. Start scheduled workflow scheduler
+    
+    On shutdown:
+    1. Stop scheduler
+    2. Close DB connections
+    3. Clean up resources
+    """
+    configure_logging()
+    logger.info("Starting Cerebra-AI backend", extra={"version": "0.2.0", "service": settings.service_name})
+
+    # Run Alembic migrations, fall back to create_all on failure
+    migrated = await _run_migrations()
+    if not migrated:
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("Database tables created via metadata.create_all")
+        except Exception as e:
+            logger.warning("Database unavailable at startup", extra={"error": str(e)})
 
     # Seed default agent templates
     try:
@@ -38,37 +91,78 @@ async def lifespan(app: FastAPI):
             from app.services.agent_template_service import seed_defaults
             seeded = await seed_defaults(session)
             if seeded:
-                import logging
-                logging.info("Seeded %d default agent templates", seeded)
+                logger.info("Default agent templates seeded", extra={"count": seeded})
     except Exception as e:
-        import logging
-        logging.warning("Could not seed agent templates: %s", e)
+        logger.warning("Could not seed agent templates", extra={"error": str(e)})
 
     # Start the APScheduler for scheduled workflows
     start_scheduler()
+    logger.info("Workflow scheduler started")
+
     yield
+
+    # Shutdown
     stop_scheduler()
+    if engine:
+        await engine.dispose()
+    logger.info("Cerebra-AI backend shut down")
 
 
-app = FastAPI(title="Cerebra-AI", version="0.2.0", lifespan=lifespan)
+app = FastAPI(
+    title="Cerebra-AI",
+    version="0.2.0",
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+)
 
 
 @app.exception_handler(Exception)
-async def global_exception_handler(request, exc: Exception):
-    """Catch unhandled exceptions and return clean JSON instead of HTML 500."""
-    import logging
-    import traceback
-    logging.error("Unhandled exception: %s\n%s", exc, traceback.format_exc())
-    from fastapi.responses import JSONResponse
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Global unhandled exception handler returning structured JSON errors.
+    
+    Logs the full traceback server-side and returns a sanitized 500 response.
+    """
+    logger.error("Unhandled exception", extra={
+        "path": str(request.url.path),
+        "method": request.method,
+        "error": str(exc),
+    }, exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Internal server error: {exc}"},
+        content={"detail": "Internal server error", "request_id": getattr(request.state, "request_id", "")},
     )
 
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Return user-friendly validation errors instead of the default raw list format.
+    
+    Transforms FastAPI's default validation error list into a structured response
+    with field-level error messages.
+    """
+    errors = []
+    for err in exc.errors():
+        field = " → ".join(str(loc) for loc in err.get("loc", []) if loc not in ("body", "query", "path"))
+        msg = err.get("msg", "Invalid value")
+        errors.append({"field": field, "message": msg})
+
+    logger.warning("Validation error", extra={
+        "path": str(request.url.path), "method": request.method,
+        "errors": errors, "request_id": getattr(request.state, "request_id", ""),
+    })
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "Validation failed", "errors": errors, "request_id": getattr(request.state, "request_id", "")},
+    )
+
+
+# --- Middleware ---
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins.split(",") if settings.cors_origins else ["http://localhost:5173"],
+    allow_origins=settings.cors_origin_list() or ["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -76,13 +170,56 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def auth_middleware(request, call_next):
-    """Validate API key and rate limit on all requests except public paths."""
+async def auth_middleware(request: Request, call_next):
+    """Validate API key and apply rate limiting on all requests except public paths."""
     response = await verify_api_key(request)
     if response:
         return response
     return await limit_middleware(request, call_next)
 
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    """Assign a unique request ID for traceability in logs and responses.
+    
+    Accepts an optional X-Request-Id header from the client; generates one otherwise.
+    """
+    rid = set_request_id(request.headers.get("X-Request-Id", None))
+    request.state.request_id = rid
+    start = time.monotonic()
+    response = await call_next(request)
+    elapsed_ms = int((time.monotonic() - start) * 1000)
+    response.headers["X-Request-Id"] = rid
+    # Log slow requests as a performance signal
+    if elapsed_ms > 1000:
+        logger.warning("Slow request", extra={
+            "path": str(request.url.path), "method": request.method,
+            "status": response.status_code, "duration_ms": elapsed_ms, "request_id": rid,
+        })
+    return response
+
+
+@app.middleware("http")
+async def audit_middleware(request: Request, call_next):
+    """Log every request for production audit trail.
+    
+    Records: method, path, status code, duration, request_id.
+    Sensitive paths (health, docs) are logged at DEBUG level.
+    """
+    start = time.monotonic()
+    response = await call_next(request)
+    elapsed_ms = int((time.monotonic() - start) * 1000)
+    path = str(request.url.path)
+    level = logger.debug if path in ("/health", "/docs", "/redoc", "/openapi.json") else logger.info
+    level("Request", extra={
+        "method": request.method, "path": path,
+        "status": response.status_code, "duration_ms": elapsed_ms,
+        "request_id": getattr(request.state, "request_id", ""),
+    })
+    return response
+
+
+# --- Routers ---
 
 app.include_router(agents.router)
 app.include_router(agent_templates.router)
@@ -94,12 +231,32 @@ app.include_router(providers.router)
 app.include_router(tools.router)
 app.include_router(human.router)
 app.include_router(ws.router)
+app.include_router(logs.router)
 
 
-@app.get("/health")
+@app.get("/health", tags=["system"])
 async def health():
-    """Health check endpoint. Returns {"status": "ok"} when the app is running."""
-    return {"status": "ok"}
+    """Health check endpoint with dependency status.
+    
+    Returns the service status and upstream dependency health.
+    This endpoint is public (no auth required).
+    """
+    db_ok = await check_db_connection()
+    deps = {
+        "database": "healthy" if db_ok else "degraded",
+    }
+    overall = "healthy" if db_ok else "degraded"
+    status_code = 200 if db_ok else 503
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": overall,
+            "service": settings.service_name,
+            "version": "0.2.0",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "dependencies": deps,
+        },
+    )
 
 
 # Patch OpenAPI schema to add singular `example` from `examples` arrays.

@@ -6,7 +6,7 @@ import type { ToolFormData } from "@/api/tools"
 import { Button, Card, Badge, Dialog, SkeletonCard } from "@/components/ui"
 import ToolForm from "@/components/ToolBuilder/ToolForm"
 import ToolTestDialog from "@/components/ToolBuilder/ToolTestDialog"
-import { Search, Calculator, Globe, Plus, Play, Clock, Dice6, AlignLeft, Braces, Link, Download, Upload, ShieldAlert, TerminalSquare } from "lucide-react"
+import { Search, Calculator, Globe, Plus, Play, Clock, Dice6, AlignLeft, Braces, Link, Download, Upload, ShieldAlert, TerminalSquare, Database } from "lucide-react"
 
 interface TestToolState {
    name: string
@@ -16,24 +16,27 @@ interface TestToolState {
  }
 
  const toolIcons: Record<string, typeof Search> = {
-   web_search: Search, calculator: Calculator, http_request: Globe, web_crawler: Globe,
-   current_time: Clock, random_number: Dice6, text_analyzer: AlignLeft, json_tool: Braces, url_info: Link,
-   circl_cve: ShieldAlert, code_interpreter: TerminalSquare,
- }
+    web_search: Search, calculator: Calculator, http_request: Globe, web_crawler: Globe,
+    current_time: Clock, random_number: Dice6, text_analyzer: AlignLeft, json_tool: Braces, url_info: Link,
+    circl_cve: ShieldAlert, code_interpreter: TerminalSquare,
+    qdrant_index: Database, qdrant_search: Database,
+  }
 
  const SAMPLE_INPUTS: Record<string, string> = {
-   web_search: "latest AI frameworks 2025",
-   calculator: "(3 + 5) * 2 / 4",
-   current_time: "IST",
-   random_number: '{"min":1,"max":100,"count":5,"unique":true}',
-   text_analyzer: "The quick brown fox jumps over the lazy dog.",
-   json_tool: '{"action":"format","json":"{\\"name\\":\\"test\\",\\"age\\":30}"}',
-   url_info: "https://example.com",
-   http_request: "https://api.github.com",
-   web_crawler: "https://en.wikipedia.org/wiki/Artificial_intelligence",
-   circl_cve: "CVE-2024-3094",
-   code_interpreter: '{"code":"numbers = [1, 2, 3, 4]\\nresult = sum(numbers) / len(numbers)","input":""}',
- }
+    web_search: "latest AI frameworks 2025",
+    calculator: "(3 + 5) * 2 / 4",
+    current_time: "IST",
+    random_number: '{"min":1,"max":100,"count":5,"unique":true}',
+    text_analyzer: "The quick brown fox jumps over the lazy dog.",
+    json_tool: '{"action":"format","json":"{\\"name\\":\\"test\\",\\"age\\":30}"}',
+    url_info: "https://example.com",
+    http_request: "https://api.github.com",
+    web_crawler: "https://en.wikipedia.org/wiki/Artificial_intelligence",
+    circl_cve: "CVE-2024-3094",
+    code_interpreter: '{"code":"numbers = [1, 2, 3, 4]\\nresult = sum(numbers) / len(numbers)","input":""}',
+    qdrant_index: '{"id":1,"vector":[0.1,0.2,0.3],"payload":{"text":"test doc"}}',
+    qdrant_search: '{"vector":[0.1,0.2,0.3],"top_k":5}',
+  }
 
 export default function ToolsPage() {
   const { data: tools, isLoading } = useTools()

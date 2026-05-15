@@ -65,3 +65,17 @@ async def delete_workflow(workflow_id: str, db: AsyncSession = Depends(get_db)):
     if not deleted:
         raise HTTPException(404, "Workflow not found")
     return {"ok": True}
+
+
+@router.delete("", response_model=DeleteResponse)
+async def clear_workflows(db: AsyncSession = Depends(get_db)):
+    """Delete all workflows and associated data. Use with caution."""
+    from app.services import workflow_service
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        count = await workflow_service.clear_workflows(db)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("Failed to clear workflows: %s", e)
+        raise HTTPException(500, "Failed to clear workflows")

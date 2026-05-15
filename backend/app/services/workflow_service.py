@@ -43,3 +43,11 @@ async def delete_workflow(db: AsyncSession, workflow_id: str) -> bool:
     await db.delete(wf)
     await db.flush()
     return True
+
+
+async def clear_workflows(db: AsyncSession) -> int:
+    """Delete all workflow definitions. Returns number deleted."""
+    from sqlalchemy import delete
+    result = await db.execute(delete(WorkflowDef))
+    await db.flush()
+    return result.rowcount or 0

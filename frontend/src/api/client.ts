@@ -1,6 +1,7 @@
 /** API client with auth headers and detailed error parsing from backend responses. */
 
 import { getAuthHeaders } from "./auth"
+import { logToServer, makeLogEntry } from "./logger"
 
 const BASE = "/api"
 
@@ -15,7 +16,9 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
         ...options.headers,
       },
     })
-  } catch {
+  } catch (err: any) {
+    // Log network failure to server for troubleshooting
+    logToServer(makeLogEntry({ level: "error", component: "apiFetch", action: path, message: "Network error", details: { error: String(err) } }))
     throw new Error("Unable to connect to backend. Make sure the server is running on port 8000.")
   }
 
@@ -27,6 +30,9 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     } catch {
       detail = res.statusText || `HTTP ${res.status}`
     }
+
+    // Log non-2xx responses
+    logToServer(makeLogEntry({ level: "warn", component: "apiFetch", action: path, message: `HTTP ${res.status}`, details: { body: detail, status: res.status } }))
 
     if (res.status === 401) {
       throw new Error("Authentication required. Set your API key in settings.")

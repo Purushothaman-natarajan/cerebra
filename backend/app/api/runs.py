@@ -1,6 +1,8 @@
 """Run management — trigger workflow execution, query status and event history."""
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -37,8 +39,19 @@ async def list_runs(db: AsyncSession = Depends(get_db)):
 @router.delete("", response_model=DeleteResponse)
 async def clear_runs(db: AsyncSession = Depends(get_db)):
     """Delete all run history and run events."""
-    await run_service.clear_runs(db)
-    return {"ok": True}
+    logger = logging.getLogger(__name__)
+    try:
+        await run_service.clear_runs(db)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("Failed to clear runs: %s", e)
+        raise HTTPException(500, "Failed to clear runs")
+
+
+@router.options("")
+async def runs_options():
+    """Support CORS preflight for DELETE /runs when proxied."""
+    return JSONResponse(status_code=200, content={})
 
 
 @router.get("/{run_id}", response_model=RunResponse,
@@ -73,10 +86,15 @@ async def trigger_run(body: RunCreate, db: AsyncSession = Depends(get_db)):
     if not wf:
         raise HTTPException(404, "Workflow not found")
 
+    if not wf.nodes:
+        raise HTTPException(400, "Workflow has no nodes — add agents to the canvas first")
+    if not wf.nodes[0].get("id"):
+        raise HTTPException(400, "Workflow entry node has no id — check node configuration")
+
     run = await run_service.create_run(db, body.workflow_id)
     await run_service.update_run_status(db, str(run.id), "running")
 
-    wf_def = {"nodes": wf.nodes, "edges": wf.edges, "entry_node": wf.nodes[0]["id"] if wf.nodes else ""}
+    wf_def = {"nodes": wf.nodes, "edges": wf.edges, "entry_node": wf.nodes[0]["id"]}
     try:
         await run_workflow(wf_def, body.input, str(run.id), db)
         await run_service.update_run_status(db, str(run.id), "completed")

@@ -11,7 +11,6 @@ dependencies = [
     "pydantic-settings>=2.7.0",
     "redis>=5.2.0",
     "langgraph>=0.2.60",
-    "google-genai>=1.10.0",
     "httpx>=0.28.0",
     "pydantic>=2.10.0",
     "beautifulsoup4>=4.12.0",
@@ -26,6 +25,7 @@ dev-dependencies = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
     "pytest-mock>=3.14.0",
+    "pytest-cov>=6.0.0",
     "fakeredis>=2.26.0",
     "aiosqlite>=0.20.0",
 ]
@@ -33,3 +33,42 @@ dev-dependencies = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+addopts = "-q --cov=app --cov-report=term --cov-report=xml:coverage.xml"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+# Rule selection: safe, non-controversial rules
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # naming
+    "UP",   # pyupgrade
+    "B",    # bugbear (selected rules only)
+    "SIM",  # simplify (selected rules only)
+]
+ignore = [
+    "E501",   # line-too-long — handled by formatter
+    "E741",   # ambiguous variable name — allows single-letter vars in math
+    "N802",   # function name should be lowercase — allows legacy names
+    "N803",   # argument name should be lowercase — allows existing code
+    "N806",   # variable in function should be lowercase — allows constants
+    "B008",   # do not perform function calls in argument defaults — common FastAPI pattern
+    "F841",   # unused variable — allow during development
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["N802", "N803", "N806", "F841"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+combine-as-imports = true

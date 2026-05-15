@@ -26,7 +26,8 @@ if (-not $hasNode) {
     Write-Host "Node.js not found. Install from https://nodejs.org/" -ForegroundColor Red
     exit 1
 }
-Write-OK "Node.js $($node --version)"
+$nodeVersion = & node --version 2>$null
+Write-OK "Node.js $nodeVersion"
 
 # ── Start Docker services (unless skipped) ───────────────────────────
 $dockerRunning = $null -ne (Get-Command "docker" -ErrorAction SilentlyContinue)

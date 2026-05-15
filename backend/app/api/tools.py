@@ -4,6 +4,7 @@ import uuid
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,17 +30,17 @@ _TOOL_EXAMPLE = {
 
 
 @router.get("", response_model=list[dict],
-    responses=list_response_example([_TOOL_EXAMPLE, {"name": "web_search", "description": "Search the web", "tool_type": "builtin", "is_builtin": True}]))
+    responses=list_response_example([_TOOL_EXAMPLE, {"id": None, "tool_id": "web_search", "name": "web_search", "description": "Search the web", "tool_type": "builtin", "is_builtin": True}]))
 async def list_tools(db: AsyncSession = Depends(get_db)):
     """List all tools: built-in + custom. No input required."""
     builtin = [
-        {"name": t["name"], "description": t["description"], "tool_type": "builtin", "is_builtin": True}
+        {"id": None, "tool_id": t["name"], "name": t["name"], "description": t["description"], "tool_type": "builtin", "is_builtin": True}
         for t in get_tool_definitions()
     ]
     try:
         result = await db.execute(select(CustomTool).order_by(CustomTool.created_at.desc()))
         custom = [
-            {"id": str(t.id), "name": t.name, "description": t.description,
+            {"id": str(t.id), "tool_id": str(t.id), "name": t.name, "description": t.description,
              "tool_type": t.tool_type, "config": t.config, "is_builtin": False,
              "created_at": t.created_at.isoformat()}
             for t in result.scalars().all()
@@ -77,62 +78,86 @@ async def test_tool(body: ToolTest, db: AsyncSession = Depends(get_db)):
     import httpx
     import time
 
+    logger = logging.getLogger(__name__)
     try:
-        tool_uuid = uuid.UUID(body.tool_id or "")
-    except ValueError:
-        fn = get_tool(body.tool_id)
-        if not fn:
+        tool_uuid = None
+        try:
+            tool_uuid = uuid.UUID(body.tool_id or "")
+        except Exception:
+            # Not a UUID — treat as built-in name
+            fn = get_tool(body.tool_id)
+            if not fn:
+                raise HTTPException(404, "Tool not found")
+
+            start = time.monotonic()
+            try:
+                result = await fn(body.input)
+                elapsed = int((time.monotonic() - start) * 1000)
+                return {"ok": True, "output": str(result)[:5000], "duration_ms": elapsed}
+            except Exception as e:
+                elapsed = int((time.monotonic() - start) * 1000)
+                logger.exception("Built-in tool execution failed: %s", e)
+                return {"ok": False, "output": f"Error: {e}", "duration_ms": elapsed}
+
+        # If we have a UUID, fetch custom tool
+        result = await db.execute(select(CustomTool).where(CustomTool.id == tool_uuid))
+        tool = result.scalar_one_or_none()
+        if not tool:
             raise HTTPException(404, "Tool not found")
 
         start = time.monotonic()
         try:
-            result = await fn(body.input)
-            elapsed = int((time.monotonic() - start) * 1000)
-            return {"ok": True, "output": str(result)[:5000], "duration_ms": elapsed}
+            if tool.tool_type == "http":
+                url = tool.config.get("url", "")
+                method = tool.config.get("method", "POST").upper()
+                headers = tool.config.get("headers", {})
+
+                async with httpx.AsyncClient(timeout=15) as client:
+                    if method == "GET":
+                        resp = await client.get(url, params={"input": body.input}, headers=headers)
+                    else:
+                        resp = await client.post(url, json={"input": body.input}, headers=headers)
+
+                elapsed = int((time.monotonic() - start) * 1000)
+                return {"ok": resp.status_code < 500, "output": f"HTTP {resp.status_code}: {resp.text[:1000]}", "duration_ms": elapsed}
+
+            elif tool.tool_type == "python":
+                code = tool.config.get("code", "")
+                if not code:
+                    raise HTTPException(400, "No Python code defined for this tool")
+
+                # Restricted sandbox — safe builtins only, no imports
+                safe_builtins = {
+                    "abs": abs, "all": all, "any": any, "bool": bool,
+                    "dict": dict, "enumerate": enumerate, "float": float,
+                    "int": int, "len": len, "list": list, "max": max,
+                    "min": min, "pow": pow, "print": print, "range": range,
+                    "round": round, "set": set, "sorted": sorted,
+                    "str": str, "sum": sum, "tuple": tuple, "zip": zip,
+                    "True": True, "False": False, "None": None,
+                }
+                local_ns: dict = {"input": body.input}
+                exec(code, {"__builtins__": safe_builtins}, local_ns)
+                result_val = local_ns.get("result", local_ns.get("output", ""))
+
+                elapsed = int((time.monotonic() - start) * 1000)
+                return {"ok": True, "output": str(result_val)[:2000], "duration_ms": elapsed}
+
+            else:
+                raise HTTPException(400, f"Unsupported tool type: {tool.tool_type}")
+
+        except HTTPException:
+            raise
         except Exception as e:
             elapsed = int((time.monotonic() - start) * 1000)
+            logger.exception("Custom tool execution failed: %s", e)
             return {"ok": False, "output": f"Error: {e}", "duration_ms": elapsed}
 
-    result = await db.execute(select(CustomTool).where(CustomTool.id == tool_uuid))
-    tool = result.scalar_one_or_none()
-    if not tool:
-        raise HTTPException(404, "Tool not found")
-
-    start = time.monotonic()
-
-    try:
-        if tool.tool_type == "http":
-            url = tool.config.get("url", "")
-            method = tool.config.get("method", "POST").upper()
-            headers = tool.config.get("headers", {})
-
-            async with httpx.AsyncClient(timeout=15) as client:
-                if method == "GET":
-                    resp = await client.get(url, params={"input": body.input}, headers=headers)
-                else:
-                    resp = await client.post(url, json={"input": body.input}, headers=headers)
-
-            elapsed = int((time.monotonic() - start) * 1000)
-            return {"ok": resp.status_code < 500, "output": f"HTTP {resp.status_code}: {resp.text[:1000]}", "duration_ms": elapsed}
-
-        elif tool.tool_type == "python":
-            code = tool.config.get("code", "")
-            if not code:
-                raise HTTPException(400, "No Python code defined for this tool")
-
-            local_ns = {"input": body.input}
-            exec(code, {"__builtins__": __builtins__}, local_ns)
-            result_val = local_ns.get("result", local_ns.get("output", ""))
-
-            elapsed = int((time.monotonic() - start) * 1000)
-            return {"ok": True, "output": str(result_val)[:2000], "duration_ms": elapsed}
-
-        else:
-            raise HTTPException(400, f"Unsupported tool type: {tool.tool_type}")
-
+    except HTTPException:
+        raise
     except Exception as e:
-        elapsed = int((time.monotonic() - start) * 1000)
-        return {"ok": False, "output": f"Error: {e}", "duration_ms": elapsed}
+        logger.exception("test_tool: unexpected error: %s", e)
+        raise HTTPException(500, "Tool test failed")
 
 
 @router.post("/test-builtin", response_model=dict,

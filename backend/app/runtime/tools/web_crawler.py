@@ -74,7 +74,42 @@ async def _crawl_with_crawl4ai(options: dict[str, Any]) -> str:
     return _trim_content(content.strip(), options["max_chars"]) or f"No crawlable content found for {options['url']}"
 
 
+async def _is_private_url(url: str) -> bool:
+    """Check if a URL resolves to a private/internal IP address."""
+    import asyncio, ipaddress, socket
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    host = parsed.hostname
+    if not host:
+        return True
+    known_private = ("localhost", "127.0.0.1", "::1", "0.0.0.0", "host.docker.internal")
+    if host in known_private:
+        return True
+    _PRIVATE_BLOCKS = [
+        ipaddress.ip_network("127.0.0.0/8"), ipaddress.ip_network("10.0.0.0/8"),
+        ipaddress.ip_network("172.16.0.0/12"), ipaddress.ip_network("192.168.0.0/16"),
+        ipaddress.ip_network("169.254.0.0/16"), ipaddress.ip_network("::1/128"),
+        ipaddress.ip_network("fc00::/7"),
+    ]
+    loop = asyncio.get_event_loop()
+    try:
+        addrs = await asyncio.wait_for(loop.getaddrinfo(host, None), timeout=5.0)
+        for family, _, _, _, sockaddr in addrs:
+            if family in (socket.AF_INET, socket.AF_INET6):
+                try:
+                    addr = ipaddress.ip_address(sockaddr[0])
+                    if any(addr in block for block in _PRIVATE_BLOCKS):
+                        return True
+                except ValueError:
+                    continue
+    except OSError:
+        return True
+    return False
+
+
 async def _crawl_with_bs4(url: str, max_chars: int) -> str:
+    if await _is_private_url(url):
+        return f"Error: Cannot crawl private/internal URL: {url}"
     async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
         resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0 (compatible; Cerebra-AI/1.0)"})
         resp.raise_for_status()

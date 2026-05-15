@@ -25,7 +25,14 @@ async def agent_node(state: dict) -> dict:
     cfg = state.get("_agent_configs", {}).get(agent_id, {})
 
     system_prompt = cfg.get("system_prompt", "")
-    model = cfg.get("model", "gemini-2.0-flash")
+    model = cfg.get("model", "")
+    if not model:
+        return {
+            "messages": state.get("messages", []) + [
+                {"role": "assistant", "content": "Error: No model selected for agent. Configure a provider and select a model before running."}
+            ],
+            "_usage": state.get("_usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost": 0.0}),
+        }
     tool_names = cfg.get("tools", [])
     max_iterations = cfg.get("max_iterations", 10)
     blocked_topics = cfg.get("guardrails", {}).get("blocked_topics", [])
@@ -35,7 +42,7 @@ async def agent_node(state: dict) -> dict:
 
     # Prepend conversation history if memory is enabled
     if memory_enabled and agent_id:
-        history = get_history(agent_id)
+        history = await get_history(agent_id, db=db)
         if history:
             messages = history + messages
 
@@ -45,7 +52,7 @@ async def agent_node(state: dict) -> dict:
     iteration = 0
     while iteration < max_iterations:
         iteration += 1
-        result, tool_call, call_usage = await call_llm_with_tools(model, system_prompt, messages, tool_defs)
+        result, tool_call, call_usage = await call_llm_with_tools(model, system_prompt, messages, tool_defs, db=db)
 
         if call_usage:
             usage["prompt_tokens"] += call_usage.get("prompt_tokens", 0)
@@ -113,6 +120,6 @@ async def agent_node(state: dict) -> dict:
 
     # Save conversation to memory if enabled
     if memory_enabled and agent_id:
-        add_messages(agent_id, messages[-4:])  # keep last exchange
+        await add_messages(agent_id, messages[-4:], db=db)  # keep last exchange
 
     return {"messages": messages, "_usage": usage}
