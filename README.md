@@ -4,82 +4,65 @@
 
 **AI Agent Orchestration Platform**
 
-Multi-agent workflows · Visual canvas · Multi-LLM · Custom tools · Telegram integration
+Multi-agent workflows · Visual canvas · Multi-LLM · Custom tools · Telegram
 
----
-
-[![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)]()
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)]()
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)]()
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)]()
-[![License](https://img.shields.io/badge/License-Proprietary-red)]()
-
----
+[![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](docs/ARCHITECTURE.md)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](docs/ARCHITECTURE.md)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](docs/ARCHITECTURE.md)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](docs/ARCHITECTURE.md)
 
 </div>
 
-<br>
-
-<div align="center">
+---
 
 ## Quick Start
 
-<br>
-
 ```bash
-cp .env.example .env          # add your GEMINI_API_KEY
+cp .env.example .env
 docker compose up --build
 ```
-
-<br>
 
 | Service | URL |
 |---------|-----|
 | Frontend | http://localhost:5173 |
-| Backend API | http://localhost:8000 |
-| API Docs (Swagger) | http://localhost:8000/docs |
-
-</div>
-
-<br>
+| Backend | http://localhost:8000 |
+| API Docs | http://localhost:8000/docs |
 
 ---
 
-## Documentation
+## Features
 
-| Document | Description |
-|----------|-------------|
-| [Full README](docs/README.md) | Complete project overview, architecture, features, setup |
-| [Architecture](docs/ARCHITECTURE.md) | System architecture, data flow, design decisions |
-| [API Docs](docs/API_DOCS.md) | Full API reference with request/response examples |
-| [Contributing](docs/CONTRIBUTING.md) | Coding standards, PR workflow, review checklist |
-| [Changelog](docs/CHANGELOG.md) | Version history |
-| [Deployment](docs/DEPLOYMENT.md) | Production deployment guide |
-| [Developer Guide](docs/DEVELOPER_GUIDE.md) | Setup, testing, adding tools/channels/providers |
-| [Security](docs/SECURITY.md) | Security policy, vulnerability reporting |
+| | Feature | Details |
+|---|---------|---------|
+| 🧠 | **Multi-LLM** | OpenAI, Gemini, Anthropic, Ollama, OpenRouter |
+| 🤖 | **Agent Builder** | System prompt, tools, conversation memory, guardrails |
+| 🔀 | **Visual Canvas** | ReactFlow drag-and-drop with 5 node types |
+| 🔧 | **13 Built-in Tools** | Search, crawl, calculator, code, CVE lookup, JSON, text |
+| 📡 | **Telegram Bots** | Connect bots to trigger workflows via webhook |
+| 📋 | **Pre-built Templates** | 10 agent presets + 4 workflow blueprints |
+| 🔒 | **Encrypted at Rest** | API keys encrypted with Fernet + PBKDF2 |
 
 ---
 
 ## Local Development
 
-**Windows**
+| Platform | Command |
+|----------|---------|
+| **Windows** | `scripts\reset_and_start.bat` |
+| **macOS / Linux** | `./scripts/run.sh` |
+| **Manual** | `cd backend && DATABASE_URL=sqlite+aiosqlite:///./cerebra.db uvicorn app.main:app --reload --port 8000` |
 
-```
-scripts\reset_and_start.bat
-```
+---
 
-**macOS / Linux**
+## Documentation
 
-```bash
-./scripts/run.sh
-```
-
-**Manual**
-
-```bash
-cd backend && DATABASE_URL=sqlite+aiosqlite:///./cerebra.db uvicorn app.main:app --reload --port 8000
-cd frontend && npm run dev
-```
+- **[Architecture](docs/ARCHITECTURE.md)** — system design, data flow, scaling
+- **[API Reference](docs/API_DOCS.md)** — all endpoints with request/response examples
+- **[Contributing](docs/CONTRIBUTING.md)** — coding standards, PR workflow
+- **[Deployment](docs/DEPLOYMENT.md)** — Docker, env vars, production setup
+- **[Developer Guide](docs/DEVELOPER_GUIDE.md)** — adding tools, agents, channels, providers
+- **[Security](docs/SECURITY.md)** — authentication, encryption, best practices
+- **[Changelog](docs/CHANGELOG.md)** — version history
 
 ---
 
@@ -90,16 +73,5 @@ cd frontend && npm run dev
 | Frontend | React 19, TypeScript, Vite, ReactFlow, Tailwind CSS |
 | Backend | Python 3.13, FastAPI, SQLAlchemy 2.0, LangGraph |
 | Database | PostgreSQL 16 (asyncpg) / SQLite (dev) |
-| Cache | Redis 7 (pub/sub, in-memory fallback) |
-| LLM | OpenAI, Gemini, Anthropic, Ollama, OpenRouter |
-
----
-
-<div align="center">
-
-<a href="docs/ARCHITECTURE.md">Architecture</a> ·
-<a href="docs/API_DOCS.md">API</a> ·
-<a href="docs/CONTRIBUTING.md">Contribute</a> ·
-<a href="docs/SECURITY.md">Security</a>
-
-</div>
+| Cache | Redis 7 (pub/sub with in-memory fallback) |
+| LLM Runtime | OpenAI, Gemini, Anthropic, Ollama, OpenRouter |
