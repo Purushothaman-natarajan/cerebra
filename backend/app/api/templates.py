@@ -11,7 +11,7 @@ from app.docs import list_response_example
 
 router = APIRouter(prefix="/templates", tags=["templates"])
 
-TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "templates"
+TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "templates"
 _cache: list[dict] | None = None
 _cache_time: float = 0
 _CACHE_TTL = 60
