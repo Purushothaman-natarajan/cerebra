@@ -1,5 +1,8 @@
 """CRUD endpoints for AI agents including export/import and testing."""
 
+from datetime import datetime, timezone
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,9 +32,31 @@ _AGENT_EXAMPLE = {
 @router.get("", response_model=list[AgentResponse],
     responses=list_response_example([_AGENT_EXAMPLE]))
 async def list_agents(db: AsyncSession = Depends(get_db)):
-    """List all configured agents, newest first. No input required."""
+    """List all configured agents, newest first. No input required.
+    
+    Returns pre-built default agents when the database is empty.
+    """
     agents = await agent_service.list_agents(db)
-    return [AgentResponse.from_orm(a) for a in agents]
+    if agents:
+        return [AgentResponse.from_orm(a) for a in agents]
+    # Fall back to default templates when no agents have been created
+    try:
+        from app.services.agent_template_service import DEFAULT_TEMPLATES
+        now = datetime.now(timezone.utc).isoformat()
+        return [
+            {
+                "id": str(uuid4()), "name": t["name"], "role": t["role"],
+                "system_prompt": t["system_prompt"], "model": t["model"],
+                "tools": t["tools"], "channel_id": None,
+                "memory_enabled": t["memory_enabled"],
+                "max_iterations": t["max_iterations"],
+                "guardrails": t["guardrails"],
+                "created_at": now, "updated_at": now,
+            }
+            for t in DEFAULT_TEMPLATES
+        ]
+    except Exception:
+        return []
 
 
 @router.post("", status_code=201, response_model=AgentResponse,
