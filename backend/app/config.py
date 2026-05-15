@@ -1,9 +1,10 @@
 """Application configuration via environment variables with Pydantic validation.
 
-All settings are loaded from `.env` file or environment variables with sensible defaults.
+All settings are loaded from `.env` file (project root) or environment variables.
 Uses pydantic-settings for validation and type coercion.
 """
 
+from pathlib import Path
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator
@@ -84,7 +85,10 @@ class Settings(BaseSettings):
         """Return parsed CORS origins as a list."""
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()] if self.cors_origins else []
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).resolve().parent.parent.parent / ".env",
+        env_file_encoding="utf-8",
+    )
 
 
 settings = Settings()
