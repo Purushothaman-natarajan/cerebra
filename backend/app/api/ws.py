@@ -42,9 +42,11 @@ async def run_logs(websocket: WebSocket, run_id: str):
         return
 
     await websocket.accept()
+    logger.info("WebSocket connected", extra={"run_id": run_id})
 
     pubsub = await subscribe(f"run:events:{run_id}")
     if pubsub is None:
+        logger.error("WebSocket event bus unavailable", extra={"run_id": run_id})
         await websocket.send_json({"type": "error", "payload": {"message": "Event bus unavailable"}})
         await websocket.close()
         return
@@ -78,5 +80,6 @@ async def run_logs(websocket: WebSocket, run_id: str):
     except Exception:
         logger.debug("WebSocket client disconnected", extra={"run_id": run_id})
     finally:
+        logger.info("WebSocket disconnected", extra={"run_id": run_id})
         await pubsub.unsubscribe()
         await pubsub.close()

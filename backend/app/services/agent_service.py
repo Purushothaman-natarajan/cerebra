@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent import Agent
 from app.runtime.llm import call_llm_with_tools, estimate_cost
-from app.runtime.tools.registry import get_tool, get_tool_definitions
+from app.runtime.tools.registry import call_tool, get_tool, get_tool_definitions
 
 
 async def list_agents(db: AsyncSession) -> list[Agent]:
@@ -125,9 +125,8 @@ async def test_agent(db: AsyncSession, agent_id: str, input_message: str) -> dic
                 )
 
             if tool_call:
-                fn = get_tool(tool_call)
-                if fn:
-                    tool_result = await fn(result)
+                if get_tool(tool_call):
+                    tool_result = await call_tool(tool_call, result)
                     messages.append({"role": "tool", "content": tool_result, "name": tool_call})
             else:
                 # Word-boundary guardrails check

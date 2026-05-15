@@ -12,7 +12,7 @@ from app.db import get_db
 from app.docs import list_response_example, response_example
 from app.models.tool import CustomTool
 import app.runtime.tools  # noqa: F401 - import built-ins so decorators populate the registry
-from app.runtime.tools.registry import get_tool, get_tool_definitions
+from app.runtime.tools.registry import call_tool, get_tool, get_tool_definitions
 from app.schemas import ToolCreate, ToolTest, ToolTestResult, DeleteResponse
 from app.services import tool_service
 
@@ -91,7 +91,7 @@ async def test_tool(body: ToolTest, db: AsyncSession = Depends(get_db)):
 
             start = time.monotonic()
             try:
-                result = await fn(body.input)
+                result = await call_tool(body.tool_id, body.input)
                 elapsed = int((time.monotonic() - start) * 1000)
                 return {"ok": True, "output": str(result)[:5000], "duration_ms": elapsed}
             except Exception as e:
@@ -173,7 +173,7 @@ async def test_builtin_tool(body: ToolTest, db: AsyncSession = Depends(get_db)):
 
     start = time.monotonic()
     try:
-        result = await fn(body.input)
+        result = await call_tool(body.tool_id, body.input)
         elapsed = int((time.monotonic() - start) * 1000)
         return {"ok": True, "output": str(result)[:5000], "duration_ms": elapsed}
     except Exception as e:

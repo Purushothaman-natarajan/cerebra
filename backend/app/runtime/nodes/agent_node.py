@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from app.bus import publish
 from app.runtime.llm import call_llm_with_tools, estimate_cost
 from app.runtime.memory import get_history, add_messages
-from app.runtime.tools.registry import get_tool, get_tool_definitions
+from app.runtime.tools.registry import get_tool, get_tool_definitions, call_tool
 from app.services import run_service
 
 
@@ -65,8 +65,7 @@ async def agent_node(state: dict) -> dict:
             )
 
         if tool_call:
-            fn = get_tool(tool_call)
-            if fn:
+            if get_tool(tool_call):
                 # Publish tool_call event
                 if run_id:
                     event = {
@@ -79,7 +78,7 @@ async def agent_node(state: dict) -> dict:
                     await publish(f"run:events:{run_id}", event)
                     if db:
                         await run_service.add_run_event(db, run_id, "tool_call", agent_id or "agent", event["payload"])
-                tool_result = await fn(result)
+                tool_result = await call_tool(tool_call, result)
                 messages.append({"role": "tool", "content": tool_result, "name": tool_call})
                 # Publish tool result as message event
                 if run_id:

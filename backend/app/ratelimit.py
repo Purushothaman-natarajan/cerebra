@@ -2,6 +2,7 @@
 
 Rate limiting uses a sliding window counter per IP per path.
 Request size limit prevents oversized payloads.
+Rate limit hits are logged with structured details for observability.
 """
 
 import time
@@ -9,6 +10,9 @@ from collections import defaultdict
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from app.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 _RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/runs": (10, 60),
@@ -40,6 +44,9 @@ async def limit_middleware(request: Request, call_next):
     # Body size check
     content_length = request.headers.get("content-length")
     if content_length and int(content_length) > _MAX_BODY_SIZE:
+        logger.warning("Request body too large", extra={
+            "path": path, "content_length": int(content_length),
+        })
         return JSONResponse(
             status_code=413,
             content={"detail": "Request body too large. Maximum size is 5 MB."},
@@ -57,6 +64,10 @@ async def limit_middleware(request: Request, call_next):
     _window[key] = timestamps
 
     if len(timestamps) >= max_req:
+        logger.warning("Rate limit exceeded", extra={
+            "client_ip": client_ip, "path": path,
+            "limit": max_req, "window_seconds": window_sec,
+        })
         return JSONResponse(
             status_code=429,
             content={"detail": "Too many requests. Please slow down."},

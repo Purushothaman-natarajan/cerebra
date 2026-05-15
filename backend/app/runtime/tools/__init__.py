@@ -27,6 +27,6 @@ for _mod_name in _TOOL_MODULES:
     except Exception as _exc:
         _log.warning("Tool module %s failed to load: %s", _mod_name, _exc)
 
-from app.runtime.tools.registry import get_tool, get_tool_definitions, list_tools
+from app.runtime.tools.registry import call_tool, get_tool, get_tool_definitions, list_tools
 
-__all__ = ["get_tool", "get_tool_definitions", "list_tools"]
+__all__ = ["call_tool", "get_tool", "get_tool_definitions", "list_tools"]
