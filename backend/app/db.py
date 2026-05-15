@@ -2,6 +2,7 @@
 
 Supports PostgreSQL (asyncpg) and SQLite (aiosqlite) for local development.
 Pool size is configurable via settings.
+Automatically creates tables on first connection if they don't exist.
 """
 
 import logging
@@ -29,12 +30,30 @@ class Base(DeclarativeBase):
     pass
 
 
+async def _ensure_tables():
+    """Create all tables if they don't exist. Called lazily on first DB access."""
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as exc:
+        logger.warning("Could not create tables", extra={"error": str(exc)})
+
+
+_tables_checked = False
+
+
 async def get_db() -> AsyncSession:
     """FastAPI dependency that yields an async database session.
 
     Commits on success, rolls back on exception, always closes.
     Uses a new session per request for isolation.
+    Automatically creates tables on first access as a safety net.
     """
+    global _tables_checked
+    if not _tables_checked:
+        await _ensure_tables()
+        _tables_checked = True
+
     async with async_session_factory() as session:
         try:
             yield session
