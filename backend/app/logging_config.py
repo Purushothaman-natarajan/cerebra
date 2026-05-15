@@ -1,7 +1,7 @@
-"""Structured logging configuration for production observability.
+"""Logging configuration — human-readable console output.
 
-Provides a consistent logging setup with JSON-formatted output,
-request-id propagation, and level-based filtering.
+Console output is formatted for easy reading during development.
+Structured JSON logging can be enabled by setting LOG_FORMAT=json.
 """
 
 import logging
@@ -12,7 +12,6 @@ from datetime import datetime, timezone
 
 from app.config import settings
 
-# Context variable for request-id propagation across async boundaries
 _request_id: ContextVar[str] = ContextVar("request_id", default="")
 _log_correlation_id: ContextVar[str] = ContextVar("correlation_id", default="")
 
@@ -37,57 +36,55 @@ def set_correlation_id(cid: str | None = None) -> str:
     return cid
 
 
-class StructuredFormatter(logging.Formatter):
-    """Produces structured log records as JSON lines for log aggregators.
-
-    Includes: timestamp, level, logger, message, request_id, correlation_id,
-    service name, and any extra fields passed via the `extra` dict.
-    """
+class ConsoleFormatter(logging.Formatter):
+    """Human-readable console format — clean, scannable, no empty fields."""
 
     def format(self, record: logging.LogRecord) -> str:
-        ts = datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat()
-        base = {
-            "timestamp": ts,
-            "level": record.levelname,
-            "logger": record.name,
-            "service": settings.service_name,
-            "request_id": get_request_id(),
-            "correlation_id": get_correlation_id(),
-        }
-        # Include extra fields from the logging call
-        for key, value in getattr(record, "extra", {}).items():
-            if key not in base:
-                base[key] = value
-
+        ts = datetime.fromtimestamp(record.created, tz=timezone.utc).strftime("%H:%M:%S")
+        level = record.levelname.ljust(5)
+        rid = get_request_id()
+        rid_part = f" [{rid}]" if rid else ""
         msg = record.getMessage()
-        if record.exc_info and record.exc_info[0]:
-            import traceback
-            base["exception"] = "".join(traceback.format_exception(*record.exc_info))
 
-        import json
-        return json.dumps({**base, "message": msg})
+        # Format extra fields as key=value
+        extra = getattr(record, "extra", {})
+        details = ""
+        if extra:
+            parts = []
+            for k, v in extra.items():
+                if isinstance(v, (str, int, float, bool)):
+                    parts.append(f"{k}={v}")
+            if parts:
+                details = "  (" + " ".join(parts[:4]) + ")"
+
+        return f"{ts} [{level}]{rid_part} {record.name}: {msg}{details}"
 
 
 def configure_logging() -> None:
-    """Initialize the root logger with structured JSON output."""
+    """Initialize the root logger with human-readable console output."""
     level = getattr(logging, settings.log_level.upper(), logging.INFO)
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(StructuredFormatter())
+
+    if settings.log_format == "json":
+        from logging_config import JsonFormatter
+        handler.setFormatter(JsonFormatter())
+    else:
+        handler.setFormatter(ConsoleFormatter())
 
     root = logging.getLogger()
     root.setLevel(level)
-    # Remove default handlers to avoid duplicate output
     for h in root.handlers[:]:
         root.removeHandler(h)
     root.addHandler(handler)
 
-    # Quiet noisy third-party loggers
     for name in ("httpx", "httpcore", "urllib3", "asyncio"):
         logging.getLogger(name).setLevel(logging.WARNING)
+    # Suppress uvicorn's own access log (we have our own audit middleware)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
 
     logging.getLogger(__name__).info("Logging configured", extra={"log_level": settings.log_level})
 
 
 def get_logger(name: str) -> logging.Logger:
-    """Return a logger with the given name, pre-configured for structured output."""
     return logging.getLogger(name)

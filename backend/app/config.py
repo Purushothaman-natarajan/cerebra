@@ -55,6 +55,7 @@ class Settings(BaseSettings):
 
     # --- Observability ---
     log_level: str = Field(default="INFO", description="Logging level (DEBUG, INFO, WARNING, ERROR).")
+    log_format: str = Field(default="console", description="Log output format: console (human-readable) or json (structured).")
     service_name: str = Field(default="cerebra-backend", description="Service name for structured logging.")
 
     @field_validator("database_url")

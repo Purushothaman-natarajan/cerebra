@@ -52,7 +52,8 @@ async def _run_migrations():
             stderr_text = stderr.decode().strip()
             logger.warning("Alembic migration failed (falling back to create_all): %s", stderr_text)
     except Exception as exc:
-        logger.warning("Could not run Alembic migrations: %s", exc)
+        msg = str(exc) or "unknown error"
+        logger.warning("Alembic migration skipped (%s) — using create_all", msg[:100])
     return False
 
 
@@ -180,9 +181,10 @@ async def auth_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
-    """Assign a unique request ID for traceability in logs and responses.
+    """Assign a unique request ID and log every request.
     
     Accepts an optional X-Request-Id header from the client; generates one otherwise.
+    Logs method, path, status, duration. Health/docs are logged at DEBUG level.
     """
     rid = set_request_id(request.headers.get("X-Request-Id", None))
     request.state.request_id = rid
@@ -190,32 +192,9 @@ async def request_id_middleware(request: Request, call_next):
     response = await call_next(request)
     elapsed_ms = int((time.monotonic() - start) * 1000)
     response.headers["X-Request-Id"] = rid
-    # Log slow requests as a performance signal
-    if elapsed_ms > 1000:
-        logger.warning("Slow request", extra={
-            "path": str(request.url.path), "method": request.method,
-            "status": response.status_code, "duration_ms": elapsed_ms, "request_id": rid,
-        })
-    return response
-
-
-@app.middleware("http")
-async def audit_middleware(request: Request, call_next):
-    """Log every request for production audit trail.
-    
-    Records: method, path, status code, duration, request_id.
-    Sensitive paths (health, docs) are logged at DEBUG level.
-    """
-    start = time.monotonic()
-    response = await call_next(request)
-    elapsed_ms = int((time.monotonic() - start) * 1000)
     path = str(request.url.path)
     level = logger.debug if path in ("/health", "/docs", "/redoc", "/openapi.json") else logger.info
-    level("Request", extra={
-        "method": request.method, "path": path,
-        "status": response.status_code, "duration_ms": elapsed_ms,
-        "request_id": getattr(request.state, "request_id", ""),
-    })
+    level("%s %s %s %dms", request.method, path, response.status_code, elapsed_ms)
     return response
 
 
