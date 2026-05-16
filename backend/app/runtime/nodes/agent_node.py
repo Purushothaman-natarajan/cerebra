@@ -93,11 +93,24 @@ async def agent_node(state: dict) -> dict:
                     await publish(f"run:events:{run_id}", event)
                     if db:
                         await run_service.add_run_event(db, run_id, "message", agent_id or "agent", event["payload"])
+            else:
+                # Tool not found in agent's tool list — inform and break
+                err = f"Error: Tool '{tool_call}' is not available for this agent."
+                messages.append({"role": "assistant", "content": err})
+                if run_id:
+                    await publish(f"run:events:{run_id}", {"run_id": run_id, "type": "message", "timestamp": datetime.now(timezone.utc).isoformat(), "agent_id": agent_id, "payload": {"content": err}})
+                    if db:
+                        await run_service.add_run_event(db, run_id, "message", agent_id or "agent", {"content": err})
+                break
         else:
             for topic in blocked_topics:
                 if topic.lower() in result.lower():
                     result = f"Blocked response (contains topic: {topic})"
                     break
+
+            if not result or not result.strip():
+                # Skip empty/whitespace-only responses — continue loop
+                continue
 
             if run_id:
                 event = {

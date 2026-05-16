@@ -55,20 +55,27 @@ function Flow({ initialNodes = [], initialEdges = [], onCanvasChange }: {
   onCanvasChangeRef.current = onCanvasChange
   const initialRef = useRef({ nodes: initialNodes, edges: initialEdges })
 
-  // Sync canvas when selected workflow changes (switch between workflows) — only when reference changes
+  // Sync canvas when selected workflow changes — deep compare to break reference-chain loop
   useEffect(() => {
-    if (initialRef.current.nodes !== initialNodes) {
-      setNodes(initialNodes)
-      initialRef.current.nodes = initialNodes
-    }
-    if (initialRef.current.edges !== initialEdges) {
-      setEdges(initialEdges)
-      initialRef.current.edges = initialEdges
+    const nodesDiffer = JSON.stringify(initialRef.current.nodes) !== JSON.stringify(initialNodes)
+    const edgesDiffer = JSON.stringify(initialRef.current.edges) !== JSON.stringify(initialEdges)
+    if (nodesDiffer || edgesDiffer) {
+      if (nodesDiffer) setNodes(initialNodes)
+      if (edgesDiffer) setEdges(initialEdges)
+      initialRef.current = { nodes: initialNodes, edges: initialEdges }
     }
   }, [initialNodes, initialEdges, setNodes, setEdges])
 
-  // Report changes to parent — stable ref avoids infinite loop from inline callbacks
-  useEffect(() => { onCanvasChangeRef.current?.(nodes, edges) }, [nodes, edges])
+  const lastReportRef = useRef({ nodes: initialNodes, edges: initialEdges })
+  // Report changes to parent — only when content actually changed
+  useEffect(() => {
+    const sameNodes = JSON.stringify(lastReportRef.current.nodes) === JSON.stringify(nodes)
+    const sameEdges = JSON.stringify(lastReportRef.current.edges) === JSON.stringify(edges)
+    if (!sameNodes || !sameEdges) {
+      lastReportRef.current = { nodes, edges }
+      onCanvasChangeRef.current?.(nodes, edges)
+    }
+  }, [nodes, edges])
 
   const handleNodesChange: OnNodesChange = useCallback((changes) => { onNodesChange(changes) }, [onNodesChange])
   const handleEdgesChange: OnEdgesChange = useCallback((changes) => { onEdgesChange(changes) }, [onEdgesChange])

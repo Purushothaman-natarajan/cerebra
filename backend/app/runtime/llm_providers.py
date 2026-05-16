@@ -302,7 +302,8 @@ async def _call_gemini(
         if "text" in part:
             return part["text"], None, usage_dict
 
-    return "", None, usage_dict
+    # No usable content found in parts — return meaningful fallback
+    return "I received no usable response content. Please check your input and try again.", None, usage_dict
 
 
 # ── Anthropic adapter ──────────────────────────────────────────────────

@@ -75,9 +75,9 @@ export default function WorkflowsPage() {
     setTestResult({ run: { id: "", workflow_id: selectedId, status: "running", started_at: null, finished_at: null, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0 }, loading: true })
     triggerRun.mutate(
       { workflow_id: selectedId, input: "Test run" },
-      { onSuccess: (run) => setTestResult({ run, loading: false }), onError: (err: Error) => setTestResult({ run: { id: "", workflow_id: selectedId, status: "failed", started_at: null, finished_at: null, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0 }, loading: false, error: err.message }) }
+      { onSuccess: (run) => { setTestResult({ run, loading: false }); navigate(`/runs?run=${run.id}`) }, onError: (err: Error) => setTestResult({ run: { id: "", workflow_id: selectedId, status: "failed", started_at: null, finished_at: null, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0 }, loading: false, error: err.message }) }
     )
-  }, [selectedId, triggerRun])
+  }, [selectedId, triggerRun, navigate])
 
   const handleCanvasChange = useCallback((nodes: Node[], edges: Edge[]) => {
     setCanvasNodes(nodes); setCanvasEdges(edges)
