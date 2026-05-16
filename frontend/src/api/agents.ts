@@ -24,6 +24,7 @@ export interface Agent {
   model: string
   tools: string[]
   channel_id: string | null
+  provider_id?: string | null | undefined
   memory_enabled: boolean
   max_iterations: number
   guardrails: { blocked_topics?: string[]; max_tokens?: number }
@@ -37,6 +38,7 @@ export interface AgentFormData {
   role: string
   system_prompt: string
   model: string
+  provider_id?: string | null
   tools: string[]
   memory_enabled: boolean
   max_iterations: number

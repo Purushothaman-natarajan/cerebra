@@ -19,19 +19,28 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
   const { data: agentTools } = useAgentTools()
   const navigate = useNavigate()
 
+  const [validationError, setValidationError] = useState<string | null>(null)
   const [form, setForm] = useState<AgentFormData>(() => initial ?? {
-    name: "", role: "", system_prompt: "", model: "",
+    name: "", role: "", system_prompt: "", model: "", provider_id: null,
     tools: [], memory_enabled: false, max_iterations: 10,
     guardrails: { blocked_topics: [], max_tokens: 4096 },
   })
-  const [selectedProvider, setSelectedProvider] = useState<string>("")
+  const [selectedProvider, setSelectedProvider] = useState<string>(initial?.provider_id ?? "")
 
   const update = (key: keyof AgentFormData, value: unknown) => setForm((f) => ({ ...f, [key]: value }))
 
   useEffect(() => {
-    if (!initial?.model || !availableModels?.length || selectedProvider) return
+    if (!initial?.model || !availableModels?.length) return
+    if (selectedProvider) {
+      if (form.model !== initial.model) update("model", initial.model)
+      return
+    }
     const modelProvider = availableModels.find((m) => m.model === initial.model)
-    if (modelProvider) setSelectedProvider(modelProvider.provider_id)
+    if (modelProvider) {
+      setSelectedProvider(modelProvider.provider_id)
+      update("model", initial.model)
+      update("provider_id", modelProvider.provider_id)
+    }
   }, [availableModels, initial?.model, selectedProvider])
 
   const toggleTool = (tool: string) => {
@@ -51,7 +60,7 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
     }))
   }, [selectedProvider, availableModels])
 
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (form.model) onSave(form) }
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (!form.model) { setValidationError("Select a model before saving."); return }; setValidationError(null); onSave(form) }
 
   if (!providers || providers.length === 0) {
     return (
@@ -91,7 +100,12 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
         <Select
           label="Model"
           value={form.model}
-          onChange={(e) => update("model", e.target.value)}
+          onChange={(e) => {
+            const m = e.target.value
+            update("model", m)
+            const info = availableModels?.find((am) => am.model === m)
+            update("provider_id", info?.provider_id ?? "")
+          }}
           options={modelOptions}
           disabled={!selectedProvider}
           required
@@ -124,6 +138,11 @@ export default function AgentForm({ initial, onSave, onCancel }: Props) {
         Enable Memory
       </label>
 
+      {validationError && (
+        <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-xs text-rose-600 dark:text-rose-400">
+          {validationError}
+        </div>
+      )}
       <div className="flex gap-2 justify-end pt-2">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button type="submit">{initial ? "Update" : "Create"}</Button>

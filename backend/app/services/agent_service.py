@@ -2,6 +2,7 @@
 
 import uuid
 import time
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,10 +52,14 @@ async def delete_agent(db: AsyncSession, agent_id: str) -> bool:
 
 
 def _clean_data(data: dict) -> dict:
-    """Convert string UUIDs to UUID objects for ORM compatibility."""
+    """Convert string UUIDs to UUID objects for ORM compatibility.
+    Normalizes empty/nullable fields to None.
+    """
     d = dict(data)
     if d.get("channel_id"):
         d["channel_id"] = uuid.UUID(d["channel_id"])
+    if not d.get("provider_id"):
+        d["provider_id"] = None
     return d
 
 
@@ -87,9 +92,34 @@ async def import_agents(db: AsyncSession, data_list: list[dict]) -> int:
     return count
 
 
-async def test_agent(db: AsyncSession, agent_id: str, input_message: str) -> dict:
+async def _template_to_agent(template: dict) -> Any:
+    """Convert a DEFAULT_TEMPLATE dict to a fake Agent-like object for testing."""
+    class _FakeAgent:
+        pass
+    a = _FakeAgent()
+    a.tools = template.get("tools", [])
+    a.system_prompt = template.get("system_prompt", "")
+    a.model = template.get("model", "")
+    a.provider_id = template.get("provider_id", None)
+    a.guardrails = template.get("guardrails", {})
+    a.max_iterations = template.get("max_iterations", 10)
+    return a
+
+
+async def test_agent(db: AsyncSession, agent_id: str, input_message: str, agent_name: str | None = None) -> dict:
     """Execute a single agent with the given input and return results with timing."""
     agent = await get_agent(db, agent_id)
+    if not agent:
+        # Fall back to default templates for pre-built agents
+        if agent_name:
+            try:
+                from app.services.agent_template_service import DEFAULT_TEMPLATES
+                for tmpl in DEFAULT_TEMPLATES:
+                    if tmpl["name"].lower() == agent_name.lower():
+                        agent = await _template_to_agent(tmpl)
+                        break
+            except Exception:
+                pass
     if not agent:
         return {"ok": False, "output": "Agent not found", "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost": 0.0, "duration_ms": 0}
 
@@ -107,12 +137,13 @@ async def test_agent(db: AsyncSession, agent_id: str, input_message: str) -> dic
     usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost": 0.0}
     start = time.monotonic()
 
+    provider_id = getattr(agent, "provider_id", None)
     try:
         iteration = 0
         max_iterations = agent.max_iterations or 10
         while iteration < max_iterations:
             iteration += 1
-            result, tool_call, call_usage = await call_llm_with_tools(model, system_prompt, messages, tool_defs, db=db)
+            result, tool_call, call_usage = await call_llm_with_tools(model, system_prompt, messages, tool_defs, db=db, provider_id=provider_id)
 
             if call_usage:
                 usage["prompt_tokens"] += call_usage.get("prompt_tokens", 0)

@@ -59,6 +59,9 @@ class AgentCreate(BaseModel):
     channel_id: str | None = Field(default=None,
         description="Optional channel UUID to bind this agent.",
         examples=[None])
+    provider_id: str | None = Field(default=None,
+        description="Optional provider UUID this agent's model belongs to.",
+        examples=[None])
     memory_enabled: bool = Field(default=False,
         description="When true, persists conversation history across runs.",
         examples=[False])
@@ -78,6 +81,7 @@ class AgentUpdate(BaseModel):
     model: str | None = Field(None, max_length=100, examples=["gpt-4o"])
     tools: list[str] | None = Field(None, max_length=50, examples=[["web_search", "http_request"]])
     channel_id: str | None = None
+    provider_id: str | None = None
     memory_enabled: bool | None = None
     max_iterations: int | None = Field(None, ge=1, le=100)
     guardrails: dict | None = None
@@ -105,6 +109,7 @@ class AgentResponse(BaseModel):
     model: str = Field(description="Model identifier.")
     tools: list[str] = Field(description="Enabled tools.")
     channel_id: str | None = Field(description="Bound channel UUID or null.")
+    provider_id: str | None = Field(default=None, description="Provider UUID this agent's model belongs to.")
     memory_enabled: bool = Field(description="Memory enabled flag.")
     max_iterations: int = Field(description="Max LLM call cycles.")
     guardrails: dict = Field(description="Guardrails config.")
@@ -117,6 +122,7 @@ class AgentResponse(BaseModel):
             id=str(agent.id), name=agent.name, role=agent.role,
             system_prompt=agent.system_prompt, model=agent.model,
             tools=agent.tools, channel_id=str(agent.channel_id) if agent.channel_id else None,
+            provider_id=agent.provider_id,
             memory_enabled=agent.memory_enabled, max_iterations=agent.max_iterations,
             guardrails=agent.guardrails, created_at=agent.created_at.isoformat(),
             updated_at=agent.updated_at.isoformat(),
@@ -207,15 +213,17 @@ class RunResponse(BaseModel):
     completion_tokens: int = Field(default=0, description="Total completion tokens across all LLM calls.")
     total_tokens: int = Field(default=0, description="Total tokens used.")
     cost: float = Field(default=0.0, description="Estimated USD cost.")
+    error: str | None = Field(default=None, description="Error message if the run failed.")
 
     @classmethod
-    def from_orm(cls, run) -> "RunResponse":
+    def from_orm(cls, run, error=None) -> "RunResponse":
         return cls(
             id=str(run.id), workflow_id=str(run.workflow_id), status=run.status,
             started_at=_iso_utc(run.started_at),
             finished_at=_iso_utc(run.finished_at),
             prompt_tokens=run.prompt_tokens, completion_tokens=run.completion_tokens,
             total_tokens=run.total_tokens, cost=run.cost,
+            error=error,
         )
 
 
@@ -438,6 +446,8 @@ class AgentTestCreate(BaseModel):
     input: str = Field(default="", max_length=50000,
         description="Input message to send to the agent.",
         examples=["What are the latest trends in AI?"])
+    agent_name: str | None = Field(default=None, description="Agent name (for pre-built template lookup).",
+        examples=["Research Assistant"])
 
 
 class AgentTestResult(BaseModel):

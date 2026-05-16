@@ -7,7 +7,7 @@ Automatically creates tables on first connection if they don't exist.
 
 import logging
 
-from sqlalchemy import text
+from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -21,6 +21,16 @@ else:
     _connect_args = {"pool_size": settings.db_pool_size, "max_overflow": settings.db_max_overflow}
 
 engine = create_async_engine(settings.database_url, echo=False, **_connect_args)
+
+if settings.database_url.startswith("sqlite"):
+    @event.listens_for(engine.sync_engine, "connect")
+    def _set_sqlite_pragmas(dbapi_connection, connection_record):
+        """Enable WAL mode and busy timeout for SQLite concurrent write support."""
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.close()
 async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 

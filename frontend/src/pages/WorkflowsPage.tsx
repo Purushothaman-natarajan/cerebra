@@ -34,30 +34,10 @@ export default function WorkflowsPage() {
   const [templateStep, setTemplateStep] = useState(0)
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
   const [runInput, setRunInput] = useState("")
-  const [testResult, setTestResult] = useState<{ run: Run; loading: boolean } | null>(null)
+  const [testResult, setTestResult] = useState<{ run: Run; loading: boolean; error?: string } | null>(null)
   const [templateModels, setTemplateModels] = useState<Record<string, string>>({})
+  const [templateNodeModels, setTemplateNodeModels] = useState<Record<string, { model: string; provider_id: string }>>({})
 
-  // Build model options from available provider models and include any models
-  // referenced by the selected template so the template's model appears in
-  // the dropdown even if no provider currently exposes it.
-  // include models from providers
-  const providerModelOptions = availableModels?.map((m) => ({ value: m.model, label: m.model, group: m.provider_name })) ?? []
-  // include models referenced by the selected template (if any)
-  const templateModelsFromTmpl = (selectedTemplate?.nodes ?? [])
-    .filter((n) => n.type === "agent")
-    .map((n) => n.config?.model as string)
-    .filter(Boolean)
-  // merge, preserving uniqueness
-  const mergedModelValues = Array.from(new Set([...providerModelOptions.map((o) => o.value), ...templateModelsFromTmpl]))
-  const mergedModelOptions = mergedModelValues.map((m) => {
-    const found = providerModelOptions.find((p) => p.value === m)
-    return found || { value: m, label: `${m} (template)`, group: "template" }
-  })
-
-  const modelOptions = [
-    { value: "", label: "Select model..." },
-    ...mergedModelOptions,
-  ]
   const firstModel = availableModels?.[0]?.model ?? ""
 
   const selectWorkflow = useCallback((id: string) => {
@@ -95,9 +75,9 @@ export default function WorkflowsPage() {
     setTestResult({ run: { id: "", workflow_id: selectedId, status: "running", started_at: null, finished_at: null, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0 }, loading: true })
     triggerRun.mutate(
       { workflow_id: selectedId, input: "Test run" },
-      { onSuccess: (run) => { setTestResult({ run, loading: false }); navigate(`/runs?run=${run.id}`) }, onError: () => setTestResult({ run: { id: "", workflow_id: selectedId, status: "failed", started_at: null, finished_at: null, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0 }, loading: false }) }
+      { onSuccess: (run) => setTestResult({ run, loading: false }), onError: (err: Error) => setTestResult({ run: { id: "", workflow_id: selectedId, status: "failed", started_at: null, finished_at: null, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0 }, loading: false, error: err.message }) }
     )
-  }, [navigate, selectedId, triggerRun])
+  }, [selectedId, triggerRun])
 
   const handleCanvasChange = useCallback((nodes: Node[], edges: Edge[]) => {
     setCanvasNodes(nodes); setCanvasEdges(edges)
@@ -106,26 +86,32 @@ export default function WorkflowsPage() {
   const handleRunNow = (id: string) => { setSelectedId(id); setShowRunConfig(true) }
 
   const chooseTemplate = (tmpl: Template) => {
+    setTemplateStep(0)
     setSelectedTemplate(tmpl)
     const defaults: Record<string, string> = {}
+    const nodeModelDefaults: Record<string, { model: string; provider_id: string }> = {}
     for (const node of tmpl.nodes) {
       if (node.type === "agent") {
-        // Prefer the model specified in the template; fall back to first available provider model
-        defaults[node.id] = (node.config?.model as string) || firstModel || ""
+        defaults[node.id] = firstModel || (node.config?.model as string) || ""
+        nodeModelDefaults[node.id] = { model: firstModel || "", provider_id: availableModels?.[0]?.provider_id ?? "" }
       }
     }
     setTemplateModels(defaults)
+    setTemplateNodeModels(nodeModelDefaults)
   }
 
   const handleImportTemplate = () => {
     if (!selectedTemplate) return
     const nodes = selectedTemplate.nodes.map((node) => {
       if (node.type !== "agent") return node
+      const nm = templateNodeModels[node.id]
+      const model = nm?.model ?? templateModels[node.id] ?? firstModel ?? node.config?.model ?? ""
       return {
         ...node,
         config: {
           ...node.config,
-          model: templateModels[node.id] || firstModel || node.config?.model || "",
+          model,
+          ...(nm?.provider_id ? { provider_id: nm.provider_id } : {}),
         },
       }
     })
@@ -141,17 +127,17 @@ export default function WorkflowsPage() {
     <div className="flex h-full">
       {/* Workflow list sidebar */}
       <div className="w-60 border-r border-border overflow-y-auto bg-card shrink-0 flex flex-col">
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between mb-3">
+        <div className="p-4 border-b border-border space-y-3">
+          <div className="flex items-center justify-between">
             <h2 className="font-semibold text-foreground text-sm">Workflows</h2>
-            <div className="flex items-center gap-2">
-              <Button size="sm" onClick={handleNew}>+ New</Button>
-              <Button size="sm" variant="outline" onClick={() => { if (confirm("Clear all workflows? This cannot be undone.")) { fetch("/api/workflows", { method: "DELETE" }).then(() => location.reload()).catch(() => alert("Failed to clear workflows")) } }}>Clear All</Button>
-            </div>
+            <button onClick={() => { if (confirm("Clear all workflows? This cannot be undone.")) { fetch("/api/workflows", { method: "DELETE" }).then(() => location.reload()).catch(() => alert("Failed to clear workflows")) } }} className="text-xs text-muted hover:text-foreground transition-colors">Clear All</button>
           </div>
-          <Button variant="secondary" size="sm" className="w-full gap-2" onClick={() => setShowTemplates(true)}>
-            <FileText className="w-3.5 h-3.5" /> From Template
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleNew} className="flex-1">+ New</Button>
+            <Button size="sm" variant="secondary" onClick={() => setShowTemplates(true)} className="flex-1 gap-1">
+              <FileText className="w-3.5 h-3.5" /> Template
+            </Button>
+          </div>
         </div>
         <div className="flex-1 p-3 space-y-2 overflow-y-auto">
           {isLoading && <p className="text-xs text-muted text-center py-4">Loading...</p>}
@@ -189,30 +175,6 @@ export default function WorkflowsPage() {
               <Button size="sm" variant="secondary" className="gap-1" onClick={handleTestRun}><Play className="w-3.5 h-3.5" /> Test</Button>
               <Button size="sm" onClick={() => handleRunNow(selectedId)}><Play className="w-3.5 h-3.5 mr-1" /> Run</Button>
             </div>
-            {testResult && (
-              <div className="shrink-0 border-b border-border bg-card/80 px-4 py-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {testResult.loading ? (
-                      <Loader2 className="w-4 h-4 text-cyan-500 animate-spin" />
-                    ) : testResult.run.status === "completed" ? (
-                      <CheckCircle className="w-4 h-4 text-emerald-500" />
-                    ) : (
-                      <XCircle className="w-4 h-4 text-rose-500" />
-                    )}
-                    <span className="text-sm font-medium text-foreground">
-                      {testResult.loading ? "Running..." : `Test ${testResult.run.status}`}
-                    </span>
-                    {testResult.run.total_tokens > 0 && (
-                      <span className="text-xs text-muted">
-                        {testResult.run.total_tokens} tok · ${testResult.run.cost.toFixed(6)}
-                      </span>
-                    )}
-                  </div>
-                  <button onClick={() => setTestResult(null)} className="text-xs text-muted hover:text-foreground">Dismiss</button>
-                </div>
-              </div>
-            )}
             <div className="flex-1">
               <Canvas initialNodes={canvasNodes} initialEdges={canvasEdges} onCanvasChange={handleCanvasChange} />
             </div>
@@ -234,7 +196,7 @@ export default function WorkflowsPage() {
       {/* Template picker dialog */}
       <Dialog open={showTemplates && !selectedTemplate} onClose={() => setShowTemplates(false)} title="Choose a Template" className="max-w-2xl">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-          {templates?.map((tmpl) => (
+          {templates?.filter((t) => t.category === "workflows").map((tmpl) => (
             <Card key={tmpl.name} hover className="cursor-pointer" onClick={() => chooseTemplate(tmpl)}>
               <div className="flex items-start justify-between mb-2">
                 <div className="p-2 rounded-lg bg-accent-soft"><FileText className="w-4 h-4" style={{ color: "var(--accent)" }} /></div>
@@ -254,8 +216,15 @@ export default function WorkflowsPage() {
         </div>
       </Dialog>
 
-      {/* Template 3-step wizard */}
-      <Dialog open={showTemplates && !!selectedTemplate} onClose={() => { setShowTemplates(false); setSelectedTemplate(null) }} title={`Use: ${selectedTemplate?.name}`} className="max-w-xl">
+      {/* Template 2-step wizard */}
+      <Dialog open={showTemplates && !!selectedTemplate} onClose={() => { setShowTemplates(false); setSelectedTemplate(null); setTemplateStep(0) }} title={`Use: ${selectedTemplate?.name}`} className="max-w-xl">
+        {(!availableModels || availableModels.length === 0) && (
+          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 mb-4">
+            <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">No LLM providers configured</p>
+            <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">LLM is the brain — without it, this workflow can't run.</p>
+            <Button size="sm" onClick={() => navigate("/providers")} className="mt-2">Add Provider</Button>
+          </div>
+        )}
         {templateStep === 0 && (
           <div className="space-y-4">
             <p className="text-sm text-muted">Assign agents or create new ones with pre-filled defaults.</p>
@@ -263,35 +232,25 @@ export default function WorkflowsPage() {
               <div key={n.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
                 <span className="text-sm font-medium text-foreground w-32 truncate">{n.id}</span>
                 <Select options={[{ value: "__new__", label: "Create new with defaults" }, ...(agents?.map((a) => ({ value: a.id, label: a.name })) ?? [])]} value="__new__" className="flex-1" />
-              </div>
-            ))}
-            <div className="flex justify-between pt-2">
-              <Button variant="ghost" onClick={() => setSelectedTemplate(null)}>Back</Button>
-              <Button onClick={() => setTemplateStep(1)}>Next →</Button>
-            </div>
-          </div>
-        )}
-        {templateStep === 1 && (
-          <div className="space-y-4">
-            <p className="text-sm text-muted">Choose models for each agent.</p>
-            {selectedTemplate?.nodes.filter((n) => n.type === "agent").map((n) => (
-              <div key={n.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                <span className="text-sm font-medium text-foreground w-32 truncate">{n.id}</span>
                 <Select
-                  value={templateModels[n.id] || firstModel || ""}
-                  onChange={(e) => setTemplateModels((current) => ({ ...current, [n.id]: e.target.value }))}
-                  options={modelOptions}
-                  className="flex-1"
+                  value={templateNodeModels[n.id]?.model ?? ""}
+                  onChange={(e) => {
+                    const m = e.target.value
+                    const info = availableModels?.find((am) => am.model === m)
+                    setTemplateNodeModels(prev => ({ ...prev, [n.id]: { model: m, provider_id: info?.provider_id ?? "" } }))
+                  }}
+                  options={availableModels?.map((m) => ({ value: m.model, label: m.model, group: m.provider_name })) ?? []}
+                  className="w-48"
                 />
               </div>
             ))}
             <div className="flex justify-between pt-2">
-              <Button variant="ghost" onClick={() => setTemplateStep(0)}>Back</Button>
-              <Button onClick={() => setTemplateStep(2)}>Next →</Button>
+              <Button variant="ghost" onClick={() => setSelectedTemplate(null)}>Back</Button>
+              <Button onClick={() => setTemplateStep(1)} disabled={!availableModels || availableModels.length === 0}>Next →</Button>
             </div>
           </div>
         )}
-        {templateStep === 2 && (
+        {templateStep === 1 && (
           <div className="space-y-4">
             <p className="text-sm text-muted">How should this workflow start?</p>
             <div className="space-y-2">
@@ -303,7 +262,7 @@ export default function WorkflowsPage() {
               ))}
             </div>
             <div className="flex justify-between pt-2">
-              <Button variant="ghost" onClick={() => setTemplateStep(1)}>Back</Button>
+              <Button variant="ghost" onClick={() => setTemplateStep(0)}>Back</Button>
               <Button onClick={handleImportTemplate}>Finish & Open Canvas →</Button>
             </div>
           </div>
@@ -320,13 +279,58 @@ export default function WorkflowsPage() {
               if (selectedId) {
                 triggerRun.mutate(
                   { workflow_id: selectedId, input: runInput },
-                  { onSuccess: (run) => navigate(`/runs?run=${run.id}`) }
+                  { onSuccess: (run) => { navigate(`/runs?run=${run.id}`); setShowRunConfig(false) } },
                 )
-                setShowRunConfig(false)
               }
-            }}><Play className="w-4 h-4 mr-1" /> Run Workflow</Button>
+            }} loading={triggerRun.isPending}><Play className="w-4 h-4 mr-1" /> Run Workflow</Button>
           </div>
         </div>
+      </Dialog>
+
+      {/* Test result dialog */}
+      <Dialog open={!!testResult} onClose={() => setTestResult(null)} title="Test Result" className="max-w-md">
+        {testResult && (
+          <div className="space-y-4">
+            {testResult.loading ? (
+              <div className="flex items-center gap-3 py-4">
+                <Loader2 className="w-5 h-5 text-cyan-500 animate-spin" />
+                <span className="text-sm text-foreground">Running test...</span>
+              </div>
+            ) : testResult.run.status === "completed" ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500" />
+                  <span className="text-sm font-medium text-foreground">Test completed</span>
+                </div>
+                {testResult.run.total_tokens > 0 && (
+                  <div className="text-sm text-muted">
+                    {testResult.run.total_tokens} tokens · ${testResult.run.cost.toFixed(6)}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3">
+                  <XCircle className="w-5 h-5 text-rose-500" />
+                  <span className="text-sm font-medium text-foreground">Test failed</span>
+                </div>
+                {testResult.error && (
+                  <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-sm text-rose-700 dark:text-rose-400 whitespace-pre-wrap break-words">
+                    {testResult.error}
+                  </div>
+                )}
+              </>
+            )}
+            {!testResult.loading && (
+              <div className="flex gap-2 justify-end pt-2">
+                <Button variant="secondary" onClick={() => setTestResult(null)}>Dismiss</Button>
+                {testResult.run.id && (
+                  <Button onClick={() => { setTestResult(null); navigate(`/runs?run=${testResult.run.id}`) }}>View Runs</Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </Dialog>
     </div>
   )

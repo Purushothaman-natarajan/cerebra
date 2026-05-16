@@ -50,7 +50,7 @@ async def list_agents(db: AsyncSession = Depends(get_db)):
             {
                 "id": str(uuid4()), "name": t["name"], "role": t["role"],
                 "system_prompt": t["system_prompt"], "model": t["model"],
-                "tools": t["tools"], "channel_id": None,
+                "tools": t["tools"], "channel_id": None, "provider_id": None,
                 "memory_enabled": t["memory_enabled"],
                 "max_iterations": t["max_iterations"],
                 "guardrails": t["guardrails"],
@@ -101,7 +101,7 @@ _test_agent_example = {
     responses={**response_example(_test_agent_example), **{404: {"description": "Agent not found"}}})
 async def test_agent(agent_id: str, body: AgentTestCreate, db: AsyncSession = Depends(get_db)):
     """Test an agent with sample input. Returns the agent's response, token usage, cost, and timing."""
-    result = await agent_service.test_agent(db, agent_id, body.input)
+    result = await agent_service.test_agent(db, agent_id, body.input, agent_name=body.agent_name)
     if not result.get("ok") and result.get("output") == "Agent not found":
         raise HTTPException(404, "Agent not found")
     return result

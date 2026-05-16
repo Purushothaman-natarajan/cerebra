@@ -4,7 +4,7 @@ import { apiFetch } from "./client"
 
 export interface Template {
   name: string; description: string; node_count: number; edge_count: number
-  trigger_type: string; nodes: WorkflowFormData["nodes"]; edges: WorkflowFormData["edges"]; trigger: WorkflowFormData["trigger"]
+  trigger_type: string; nodes: WorkflowFormData["nodes"]; edges: WorkflowFormData["edges"]; trigger: WorkflowFormData["trigger"]; category: string
 }
 
 const fetchTemplates = () => apiFetch<Template[]>("/templates")

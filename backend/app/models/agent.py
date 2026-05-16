@@ -18,6 +18,7 @@ class Agent(Base):
     role: Mapped[str] = mapped_column(String(255), nullable=False)
     system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
     model: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    provider_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     tools: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     channel_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     memory_enabled: Mapped[bool] = mapped_column(Boolean, default=False)

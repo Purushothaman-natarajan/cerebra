@@ -60,10 +60,11 @@ async def _run_scheduled_workflows():
             _running_workflows.add(wf_id)
 
             try:
-                rid = await asyncio.wait_for(
-                    run_workflow(wf_def, input_message, db=None),
-                    timeout=_EXECUTION_TIMEOUT,
-                )
+                async with AsyncSession(engine) as run_db:
+                    rid = await asyncio.wait_for(
+                        run_workflow(wf_def, input_message, db=run_db),
+                        timeout=_EXECUTION_TIMEOUT,
+                    )
                 logger.info("Scheduled workflow executed", extra={
                     "workflow": wf.name, "workflow_id": wf_id, "run_id": rid,
                 })

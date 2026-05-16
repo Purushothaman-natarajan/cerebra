@@ -1,31 +1,58 @@
 /** Templates page — browse pre-built workflows with import history and error handling. */
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useTemplates } from "@/api/templates"
 import type { Template } from "@/api/templates"
 import { useCreateWorkflow } from "@/api/workflows"
-import { Button, Card, Badge, Dialog, SkeletonCard } from "@/components/ui"
+import { useAvailableModels } from "@/api/providers"
+import { Button, Card, Badge, Dialog, Select, SkeletonCard } from "@/components/ui"
 import { FileText, ArrowRight, Clock, AlertCircle } from "lucide-react"
 
 export default function TemplatesPage() {
   const { data: templates, isLoading, isError } = useTemplates()
+  const { data: availableModels, isLoading: isLoadingModels } = useAvailableModels()
   const createWorkflow = useCreateWorkflow()
   const navigate = useNavigate()
 
   const [selected, setSelected] = useState<Template | null>(null)
+  const [noProviderError, setNoProviderError] = useState(false)
   const [importedHistory, setImportedHistory] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("cerebra-template-history") || "[]") } catch { return [] }
   })
+  const [nodeModels, setNodeModels] = useState<Record<string, { model: string; provider_id: string }>>({})
+
+  useEffect(() => {
+    if (!selected?.nodes || !availableModels?.length) return
+    const defaults: Record<string, { model: string; provider_id: string }> = {}
+    for (const node of selected.nodes) {
+      if (node.type === "agent") {
+        defaults[node.id] = { model: availableModels[0].model, provider_id: availableModels[0].provider_id }
+      }
+    }
+    setNodeModels(defaults)
+  }, [selected, availableModels])
 
   const handleImport = (tmpl: Template) => {
+    setNoProviderError(false)
+    if (isLoadingModels) return
+    if (!availableModels || availableModels.length === 0) {
+      setNoProviderError(true)
+      return
+    }
+    const nodes = tmpl.nodes.map((node) => {
+      if (node.type !== "agent") return node
+      const nm = nodeModels[node.id]
+      return { ...node, config: { ...node.config, model: nm?.model ?? "", provider_id: nm?.provider_id ?? null } }
+    })
     createWorkflow.mutate(
-      { name: tmpl.name, nodes: tmpl.nodes, edges: tmpl.edges, trigger: tmpl.trigger },
+      { name: tmpl.name, nodes, edges: tmpl.edges, trigger: tmpl.trigger },
       { onSuccess: (data) => {
         const updated = [tmpl.name, ...importedHistory.filter((h) => h !== tmpl.name)].slice(0, 10)
         localStorage.setItem("cerebra-template-history", JSON.stringify(updated))
         setImportedHistory(updated)
         setSelected(null)
+        setNoProviderError(false)
         navigate(`/workflows?id=${data.id}`)
       }}
     )
@@ -57,7 +84,7 @@ export default function TemplatesPage() {
           </h2>
           <div className="flex flex-wrap gap-2">
             {importedHistory.map((name) => {
-              const tmpl = templates?.find((t) => t.name === name)
+              const tmpl = templates?.find((t) => t.category === "workflows" && t.name === name)
               return tmpl ? (
                 <button key={name} onClick={() => setSelected(tmpl)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:border-accent/50 hover:bg-accent-soft transition-all text-sm"
@@ -81,7 +108,7 @@ export default function TemplatesPage() {
       {/* Template grid */}
       {!isLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates?.map((tmpl) => (
+          {templates?.filter((t) => t.category === "workflows").map((tmpl) => (
             <Card key={tmpl.name} hover className="cursor-pointer p-5 flex flex-col" onClick={() => setSelected(tmpl)}>
               <div className="flex items-start justify-between mb-3">
                 <div className="p-2.5 rounded-xl bg-accent-soft shrink-0" style={{ color: "var(--accent)" }}>
@@ -105,8 +132,17 @@ export default function TemplatesPage() {
       )}
 
       {/* Preview dialog */}
-      <Dialog open={!!selected} onClose={() => setSelected(null)} title={selected?.name} className="max-w-lg">
-        {selected && (
+      <Dialog open={!!selected} onClose={() => { setSelected(null); setNoProviderError(false) }} title={selected?.name} className="max-w-lg">
+        {noProviderError ? (
+          <div className="space-y-4">
+            <p className="text-sm text-foreground font-medium">No LLM providers configured</p>
+            <p className="text-sm text-muted">LLM is the brain — without it, workflows can't run. Please add a provider first.</p>
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="secondary" onClick={() => { setSelected(null); setNoProviderError(false) }}>Cancel</Button>
+              <Button onClick={() => navigate("/providers")}>Go to Providers</Button>
+            </div>
+          </div>
+        ) : selected?.nodes ? (
           <div className="space-y-4">
             <p className="text-sm text-muted">{selected.description}</p>
             <div className="flex gap-3 text-xs text-muted">
@@ -125,11 +161,33 @@ export default function TemplatesPage() {
                 ))}
               </div>
             </div>
+            {selected.nodes.filter((n: { type: string }) => n.type === "agent").length > 0 && (
+              <div className="space-y-3 border-t border-border pt-3">
+                <p className="text-xs font-medium text-foreground">Agent Models</p>
+                {selected.nodes.filter((n: { type: string }) => n.type === "agent").map((n: { id: string }) => (
+                  <div key={n.id} className="flex items-center gap-3">
+                    <span className="text-xs text-muted w-24 truncate">{n.id}</span>
+                    <Select
+                      value={nodeModels[n.id]?.model ?? ""}
+                      onChange={(e) => {
+                        const m = e.target.value
+                        const info = availableModels?.find((am: { model: string }) => am.model === m)
+                        setNodeModels(prev => ({ ...prev, [n.id]: { model: m, provider_id: info?.provider_id ?? "" } }))
+                      }}
+                      options={availableModels?.map((m: { model: string; provider_name: string }) => ({ value: m.model, label: m.model, group: m.provider_name })) ?? []}
+                      className="flex-1"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex gap-2 justify-end pt-2">
-              <Button variant="secondary" onClick={() => setSelected(null)}>Cancel</Button>
-              <Button onClick={() => handleImport(selected)} loading={createWorkflow.isPending}>Use Template</Button>
+              <Button variant="secondary" onClick={() => { setSelected(null); setNoProviderError(false) }}>Cancel</Button>
+              <Button onClick={() => handleImport(selected)} loading={createWorkflow.isPending || isLoadingModels} disabled={isLoadingModels}>Use Template</Button>
             </div>
           </div>
+        ) : selected && (
+          <p className="text-sm text-muted py-4">This template type is not available for preview.</p>
         )}
       </Dialog>
     </div>

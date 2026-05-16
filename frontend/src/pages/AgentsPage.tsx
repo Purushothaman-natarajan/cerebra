@@ -42,7 +42,7 @@ export default function AgentsPage() {
 
   const handleSave = (data: AgentFormData) => {
     const isDefault = editingAgent ? (editingAgent.data as any).is_default : false
-    if (editingAgent && !isDefault) {
+    if (editingAgent && editingAgent.id && !isDefault) {
       updateAgent.mutate({ id: editingAgent.id, data })
     } else {
       createAgent.mutate(data)

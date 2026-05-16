@@ -9,7 +9,9 @@ This replaces the old hardcoded Gemini-only client.
 
 import json
 import logging
+import re
 import time
+import uuid
 from typing import Any
 
 import httpx
@@ -63,29 +65,98 @@ TOOL_SCHEMA = {
 }
 
 
-async def _resolve_provider(model_name: str, db: AsyncSession | None) -> dict[str, Any] | None:
+def _model_matches(model_name: str, provider_models: list[str]) -> bool:
+    """Check if a model name matches any entry in a provider's model list.
+
+    Handles prefix mismatches like 'anthropic/claude-opus-4.7-fast' vs
+    'claude-opus-4.7-fast' by comparing just the name part after the last '/'.
+    Also strips trailing version/date suffixes like '-20250514'.
+    """
+    if model_name in provider_models:
+        return True
+    short = model_name.split("/")[-1]
+    if short in provider_models:
+        return True
+    # Try matching stored names that may have a prefix
+    for m in provider_models:
+        if m.split("/")[-1] == model_name:
+            return True
+        if m.split("/")[-1] == short:
+            return True
+    # Try stripping version suffixes (e.g. claude-opus-4-20250514 -> claude-opus-4)
+    base = re.sub(r"-\d{8}$", "", short)
+    if base != short:
+        for m in provider_models:
+            m_base = re.sub(r"-\d{8}$", "", m.split("/")[-1])
+            if m_base == base:
+                return True
+    return False
+
+
+async def _resolve_provider(model_name: str, db: AsyncSession | None, provider_id: str | None = None) -> dict[str, Any] | None:
     """Look up which provider owns a given model name.
 
+    If provider_id is given, does a direct lookup by ID first; falls back to
+    scanning all active providers if the direct lookup fails (handles stale IDs).
+    If provider_id is not given, scans all active providers for a model match.
     Returns provider info dict with keys: provider_type, api_key, base_url
     Returns None if no matching provider found (caller should fall back to Gemini env key).
     """
     if db is None:
+        if provider_id:
+            logger.warning("No db session — creating temporary session for provider_id lookup of model '%s'", model_name)
+            from app.db import engine
+            async with AsyncSession(engine) as tmp_db:
+                return await _resolve_provider(model_name, tmp_db, provider_id)
+        logger.warning("No db session and no provider_id — cannot look up provider for model '%s'", model_name)
         return None
     try:
         from app.models.provider import LLMProvider
         from app.security import decrypt_value
+
+        # Direct provider_id lookup (fast path)
+        if provider_id:
+            logger.warning("Direct provider_id lookup for model '%s': provider_id='%s'", model_name, provider_id)
+            try:
+                uid = uuid.UUID(provider_id)
+            except (ValueError, AttributeError):
+                logger.warning("Invalid provider_id '%s' for model '%s', falling back to scan", provider_id, model_name)
+                uid = None
+            if uid:
+                result = await db.execute(
+                    select(LLMProvider).where(
+                        LLMProvider.id == uid,
+                        LLMProvider.is_active == True,
+                    )
+                )
+                p = result.scalar_one_or_none()
+                if p:
+                    api_key = decrypt_value(p.api_key) if p.api_key else ""
+                    return {
+                        "provider_type": p.provider_type,
+                        "api_key": api_key,
+                        "base_url": p.base_url.rstrip("/"),
+                    }
+                logger.warning("Provider %s not found by UUID — may have been deleted, falling back to scan", provider_id)
+
+        # Scan all active providers for a model match
         result = await db.execute(
             select(LLMProvider).where(LLMProvider.is_active == True)
         )
         providers = result.scalars().all()
+        logger.warning("Scanning %d active provider(s) for model '%s'", len(providers), model_name)
         for p in providers:
-            if model_name in (p.models or []):
+            p_models = p.models or []
+            if _model_matches(model_name, p_models):
                 api_key = decrypt_value(p.api_key) if p.api_key else ""
+                logger.warning("Matched model '%s' to provider '%s' (type=%s)", model_name, p.name, p.provider_type)
                 return {
                     "provider_type": p.provider_type,
                     "api_key": api_key,
                     "base_url": p.base_url.rstrip("/"),
                 }
+            logger.warning("Provider '%s' (type=%s) models=%s — no match for model '%s'", p.name, p.provider_type, p_models, model_name)
+        logger.warning("No active provider matched model '%s' (checked %d active provider(s))", model_name, len(providers))
     except Exception as exc:
         logger.warning("Provider lookup failed for model %s: %s", model_name, exc)
     return None
@@ -319,17 +390,18 @@ async def call_llm_with_tools(
     messages: list[dict],
     tool_defs: list[dict],
     db: AsyncSession | None = None,
+    provider_id: str | None = None,
 ) -> tuple[str, str | None, dict]:
     """Call an LLM with optional tool support, routing to the correct provider.
 
-    1. First, looks up which provider owns this model in the DB.
-    2. Routes to OpenAI-compatible, Gemini, or Anthropic adapter.
+    1. First, tries direct provider lookup by provider_id if given.
+    2. Falls back to scanning all active providers for a matching model name.
     3. Falls back to the old Gemini env-key behavior if no provider found.
 
     Returns (response_text, tool_name_or_None, usage_dict).
     """
     start = time.monotonic()
-    provider = await _resolve_provider(model_name, db)
+    provider = await _resolve_provider(model_name, db, provider_id)
 
     if provider:
         ptype = provider["provider_type"]
@@ -384,5 +456,5 @@ async def call_llm_with_tools(
         return result
 
     elapsed_ms = int((time.monotonic() - start) * 1000)
-    logger.warning("No provider found for model", extra={"model": model_name, "duration_ms": elapsed_ms})
-    return f"Error: No provider configured for model '{model_name}' and no GEMINI_API_KEY fallback set", None, {}
+    logger.warning("No provider found for model '%s' and no GEMINI_API_KEY fallback", model_name, extra={"model": model_name, "duration_ms": elapsed_ms})
+    return f"Error: No provider configured for model '{model_name}'. Please add a provider or set GEMINI_API_KEY.", None, {}

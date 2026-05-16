@@ -45,7 +45,7 @@ export default function LiveLogs({ runId }: Props) {
     pollRef.current = setInterval(async () => {
       try {
         const events = await apiFetch<LogEntry[]>(`/runs/${runId}/events`)
-        if (isMounted.current && events.length > 0) setLogs(events)
+        if (isMounted.current) setLogs(events)
       } catch { /* backend might be down */ }
     }, POLL_INTERVAL_MS)
   }, [runId])
@@ -86,8 +86,12 @@ export default function LiveLogs({ runId }: Props) {
         setConnected(true)
         setPolling(false)
         stopPolling()
-        reconnectDelayRef.current = RECONNECT_BASE_MS  // Reset backoff on successful connect
+        reconnectDelayRef.current = RECONNECT_BASE_MS
         startPing(ws)
+        // Fetch existing events — run may have completed before WS connected
+        apiFetch<LogEntry[]>(`/runs/${runId}/events`).then((events) => {
+          if (isMounted.current) setLogs(events)
+        }).catch(() => {})
       }
 
       ws.onmessage = (event) => {

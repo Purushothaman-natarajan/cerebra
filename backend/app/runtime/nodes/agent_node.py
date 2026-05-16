@@ -33,6 +33,7 @@ async def agent_node(state: dict) -> dict:
             ],
             "_usage": state.get("_usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost": 0.0}),
         }
+    provider_id = cfg.get("provider_id", None)
     tool_names = cfg.get("tools", [])
     max_iterations = cfg.get("max_iterations", 10)
     blocked_topics = cfg.get("guardrails", {}).get("blocked_topics", [])
@@ -52,7 +53,7 @@ async def agent_node(state: dict) -> dict:
     iteration = 0
     while iteration < max_iterations:
         iteration += 1
-        result, tool_call, call_usage = await call_llm_with_tools(model, system_prompt, messages, tool_defs, db=db)
+        result, tool_call, call_usage = await call_llm_with_tools(model, system_prompt, messages, tool_defs, db=db, provider_id=provider_id)
 
         if call_usage:
             usage["prompt_tokens"] += call_usage.get("prompt_tokens", 0)

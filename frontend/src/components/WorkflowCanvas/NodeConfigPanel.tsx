@@ -61,7 +61,12 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }: Props) {
         {node.type === "agent" && (
           <>
             <Textarea label="System Prompt" value={(d.system_prompt as string) || ""} onChange={(e) => update("system_prompt", e.target.value)} rows={4} placeholder="You are a helpful assistant..." />
-            <Select label="Model" value={(d.model as string) || ""} onChange={(e) => update("model", e.target.value)} options={modelOptions} />
+            <Select label="Model" value={(d.model as string) || ""} onChange={(e) => {
+              const m = e.target.value
+              const info = availableModels?.find((am) => am.model === m)
+              update("model", m)
+              update("provider_id", info?.provider_id ?? "")
+            }} options={modelOptions} />
             <Input label="Max Iterations" type="number" value={(d.max_iterations as number) ?? 10} onChange={(e) => update("max_iterations", Number(e.target.value))} min={1} />
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">Tools</label>
