@@ -16,6 +16,7 @@ const titleMap: Record<string, string> = {
   CONTRIBUTING: "Contributing",
   SECURITY: "Security",
   CHANGELOG: "Changelog",
+  QUICKSTART: "Quick Start",
   INDEX: "Overview",
 }
 

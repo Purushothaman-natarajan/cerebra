@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import { allDocs } from "@/docs"
 
 const docIcons: Record<string, string> = {
+  "quick-start": "⚡",
   architecture: "🏗️",
   "api-reference": "📡",
   deployment: "🚀",
