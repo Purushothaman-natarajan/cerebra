@@ -26,8 +26,14 @@ export default function Hero() {
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
-              to="/docs"
+              to="/docs/quickstart"
               className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/25 transition-all hover:bg-brand-600 hover:shadow-brand-500/40"
+            >
+              Quick Start
+            </Link>
+            <Link
+              to="/docs"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-600 bg-slate-800/50 px-5 py-2.5 text-sm font-semibold text-slate-300 transition-all hover:bg-slate-700 hover:text-white"
             >
               Read the Docs
             </Link>

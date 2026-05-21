@@ -2,7 +2,7 @@ import { Link } from "react-router-dom"
 import { allDocs } from "@/docs"
 
 const docIcons: Record<string, string> = {
-  "quick-start": "⚡",
+  quickstart: "⚡",
   architecture: "🏗️",
   "api-reference": "📡",
   deployment: "🚀",
@@ -11,6 +11,12 @@ const docIcons: Record<string, string> = {
   security: "🔒",
   changelog: "📋",
 }
+
+const sortedDocs = [...allDocs].sort((a, b) => {
+  if (a.slug === "quickstart") return -1
+  if (b.slug === "quickstart") return 1
+  return a.title.localeCompare(b.title)
+})
 
 export default function DocsIndex() {
   return (
@@ -24,7 +30,7 @@ export default function DocsIndex() {
         </p>
       </div>
       <div className="mt-10 grid gap-4 sm:grid-cols-2">
-        {allDocs.map((doc) => (
+        {sortedDocs.map((doc) => (
           <Link
             key={doc.slug}
             to={`/docs/${doc.slug}`}
