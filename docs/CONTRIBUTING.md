@@ -4,6 +4,8 @@
 
 This project adheres to a code of conduct. By participating, you agree to maintain a respectful, inclusive, and constructive environment.
 
+---
+
 ## Git Workflow
 
 ### Branching Strategy
@@ -52,13 +54,15 @@ test(runs): add integration test for failed workflow
 security(auth): validate token expiry before access
 ```
 
+---
+
 ## Pull Request Process
 
 ### Before Submitting
 
 1. **Run all tests:**
    ```bash
-   cd backend && .venv/Scripts/py.test.exe
+   cd backend && python -m pytest tests/ -v
    cd frontend && npm run build
    ```
 
@@ -66,7 +70,7 @@ security(auth): validate token expiry before access
    ```bash
    # Backend (Python)
    pip install ruff && ruff check backend/app/
-   
+
    # Frontend (TypeScript)
    cd frontend && npx tsc --noEmit
    ```
@@ -100,6 +104,8 @@ security(auth): validate token expiry before access
 3. No merge conflicts with `main`
 4. Squash commits before merging
 
+---
+
 ## Coding Standards
 
 ### Python
@@ -112,18 +118,17 @@ security(auth): validate token expiry before access
 - **Naming**: `snake_case` for functions/variables, `PascalCase` for classes, `UPPER_CASE` for constants
 - **Error handling**: Use specific exception types; avoid bare `except:`
 
-**Example:**
 ```python
 async def get_agent(db: AsyncSession, agent_id: str) -> Agent | None:
     """Fetch an agent by UUID.
-    
+
     Args:
         db: Async database session.
         agent_id: UUID string of the agent.
-        
+
     Returns:
         The Agent ORM instance, or None if not found.
-        
+
     Raises:
         ValueError: If agent_id is not a valid UUID.
     """
@@ -146,7 +151,6 @@ async def get_agent(db: AsyncSession, agent_id: str) -> Agent | None:
 - **File structure**: One component per file, exported as default
 - **Error boundaries**: Wrap async operations with try/catch; show user-friendly toasts
 
-**Example:**
 ```typescript
 interface AgentCardProps {
   agent: Agent;
@@ -186,6 +190,8 @@ export default function AgentCard({ agent, onEdit, onDelete, onTest }: AgentCard
 | Database tables | `snake_case` | `run_events` |
 | Environment variables | `UPPER_SNAKE_CASE` | `DATABASE_URL` |
 
+---
+
 ## Testing Guidelines
 
 ### Backend Tests
@@ -199,9 +205,9 @@ export default function AgentCard({ agent, onEdit, onDelete, onTest }: AgentCard
 
 ```bash
 cd backend
-.venv/Scripts/py.test.exe -v                    # Run all tests
-.venv/Scripts/py.test.exe -k "test_tools"       # Run specific test file
-.venv/Scripts/py.test.exe --coverage             # Coverage report
+python -m pytest tests/ -v                    # Run all tests
+python -m pytest tests/test_agent_crud.py -v  # Run specific file
+python -m pytest tests/ --cov=app             # Coverage report
 ```
 
 ### Frontend Tests
@@ -213,9 +219,11 @@ cd backend
 
 ```bash
 cd frontend
-npx vitest run                                   # Run all tests
-npx vitest --coverage                            # Coverage report
+npx vitest run                  # Run all tests
+npx vitest --coverage           # Coverage report
 ```
+
+---
 
 ## Adding a New Tool
 
@@ -226,12 +234,15 @@ npx vitest --coverage                            # Coverage report
 5. Add sample input to `SAMPLE_INPUTS` map
 6. Add frontend tests if UI interactions are affected
 
+---
+
 ## Adding a New LLM Provider
 
-1. Add provider configuration fields to `backend/app/config.py` (optional)
-2. Add pricing entry to `backend/app/runtime/llm.py` `MODEL_PRICING` table
-3. Implement provider-specific client adapter in `backend/app/runtime/providers/`
-4. Register provider in the provider router for UI display
+1. Add adapter in `backend/app/runtime/llm_providers.py`
+2. Register the provider type in the provider router
+3. Add model discovery logic in the test-connection flow
+
+---
 
 ## Security Checklist
 
@@ -244,6 +255,8 @@ npx vitest --coverage                            # Coverage report
 - [ ] Authentication enforced (configurable)
 - [ ] Dependencies scanned for known vulnerabilities
 
+---
+
 ## Questions?
 
-Open a GitHub Discussion or tag a maintainer in your PR.
+Open a [GitHub Discussion](https://github.com/Purushothaman-natarajan/cerebra/discussions) or tag a maintainer in your PR.

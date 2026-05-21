@@ -8,13 +8,15 @@ export interface DocEntry {
 
 const titleMap: Record<string, string> = {
   ARCHITECTURE: "Architecture",
-  API_DOCS: "API Reference",
+  API: "API Reference",
   DEPLOYMENT: "Deployment",
-  DEVELOPER_GUIDE: "Developer Guide",
+  DEVELOPMENT: "Development Guide",
+  PROVIDERS: "Provider Setup",
+  TROUBLESHOOTING: "Troubleshooting",
   CONTRIBUTING: "Contributing",
   SECURITY: "Security",
   CHANGELOG: "Changelog",
-  README: "Overview",
+  INDEX: "Overview",
 }
 
 export const allDocs: DocEntry[] = Object.entries(docModules)
@@ -26,7 +28,7 @@ export const allDocs: DocEntry[] = Object.entries(docModules)
       content: content as string,
     }
   })
-  .filter((d) => d.slug !== "readme" && d.slug !== "readme-1")
+  .filter((d) => d.slug !== "index" && d.slug !== "index-1")
 
 export function getDoc(slug: string): DocEntry | undefined {
   return allDocs.find((d) => d.slug === slug)

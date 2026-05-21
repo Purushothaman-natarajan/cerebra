@@ -48,14 +48,14 @@ Cerebra-AI is a multi-agent orchestration platform that enables users to create,
 │                         │                                      │
 │  ┌──────────────────────┴──────────────────────────────────┐   │
 │  │                    Runtime Layer                          │   │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐    │   │
-│  │  │ Compiler │ │Executor  │ │   LLM    │ │  Tools   │    │   │
-│  │  │(LangGraph)│ │(run_work)│ │(Gemini)  │ │ Registry │    │   │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘    │   │
+│  │  ┌──────────┐ ┌──────────┐ ┌────────────┐ ┌──────────┐   │   │
+│  │  │ Compiler │ │Executor  │ │ LLM Router │ │  Tools   │   │   │
+│  │  │(LangGraph)│ │(run_work)│ │(5 providers)│ │ Registry │   │   │
+│  │  └──────────┘ └──────────┘ └────────────┘ └──────────┘   │   │
 │  └──────────────────────┬──────────────────────────────────┘   │
 │                         │                                      │
 │  ┌──────────────────────┴──────────────────────────────────┐   │
-│  │         Data Layer (SQLAlchemy + asyncpg)                │   │
+│  │         Data Layer (SQLAlchemy + asyncpg/aiosqlite)      │   │
 │  │  agents │ tools │ workflows │ runs │ providers │ logs   │   │
 │  │  channels │ agent_templates │ run_events                 │   │
 │  └──────────────────────┬──────────────────────────────────┘   │
@@ -92,9 +92,27 @@ Frontend WS ──► Backend ──► Redis Pub/Sub ──► Executor publish
 ```
 User configures provider ──► POST /providers ──► Test connection
   └── Models stored in DB ──► AgentForm/NodeConfig populate dropdown
-  └── At runtime: llm.py uses GEMINI_API_KEY (single provider)
-  └── TODO: Provider-aware LLM router (see Known Debt)
+
+At runtime:
+  1. Check node's provider_id → direct match (fast path)
+  2. Fallback: scan all providers for model name match
+  3. Fallback: use GEMINI_API_KEY environment variable
+  4. Return error if nothing matches
 ```
+
+## Multi-LLM Provider Architecture
+
+Cerebra supports five LLM provider families through a unified adapter interface:
+
+| Provider | Adapter | Model Discovery |
+|----------|---------|-----------------|
+| OpenAI | `_call_openai` | `/v1/models` |
+| Gemini | `_call_gemini` | Hardcoded known models |
+| Anthropic | `_call_anthropic` | `/v1/models` |
+| Ollama | `_call_openai` | `/api/tags` |
+| OpenRouter | `_call_openai` | `/v1/models` |
+
+All OpenAI-compatible providers reuse the same adapter with different base URLs. The router selects the adapter based on the `provider_type` field stored in the database.
 
 ## Design Decisions
 
@@ -108,10 +126,10 @@ User configures provider ──► POST /providers ──► Test connection
 - In-memory fallback ensures single-instance development works without Redis
 - Production deployments can scale with Redis Cluster
 
-### Why Gemini REST API vs SDK?
-- The google-genai SDK doesn't support `system_instruction` and `tools` in `generate_content()`
-- Direct REST API calls provide full control over request/response format
-- Trade-off: provider-specific implementation (see Known Debt)
+### Why provider adapters instead of a unified SDK?
+- Each provider has unique API formats (OpenAI chat completions, Gemini content generation, Anthropic messages)
+- Direct REST calls provide full control over request/response format
+- Adapter pattern makes adding new providers straightforward
 
 ### Why SQLAlchemy 2.0 async?
 - Native async support avoids thread pool contention
@@ -127,7 +145,7 @@ User configures provider ──► POST /providers ──► Test connection
 | `api/` | HTTP route handlers | ~35 endpoints across 10 routers |
 | `models/` | SQLAlchemy ORM models | 9 tables (agents, workflows, runs, etc.) |
 | `services/` | Business logic | CRUD + test agent + token tracking |
-| `runtime/` | Workflow execution | Executor, Compiler, LLM client, Tools |
+| `runtime/` | Workflow execution | Executor, Compiler, LLM router, Tools |
 | `channels/` | External integrations | Telegram bot channel |
 | `bus.py` | Event pub/sub | Redis + in-memory fallback |
 | `auth.py` | API auth | Bearer token or no-auth mode |
@@ -145,34 +163,6 @@ User configures provider ──► POST /providers ──► Test connection
 | `components/*/` | Domain-specific components |
 | `store/` | Zustand state for agent form |
 | `contexts/` | Theme context (light/dark + 6 accents) |
-
-## Scaling Considerations
-
-### Current Limits
-- **Single Python process** for workflow execution (blocking during long runs)
-- **In-memory rate limiter** doesn't work across multiple instances
-- **In-memory conversation history** lost on restart
-- **Gemini-only LLM routing** limits provider flexibility
-
-### Horizontal Scaling Path
-1. Move rate limiting to Redis (sliding window or token bucket)
-2. Replace in-memory conversation history with Redis/DB persistence
-3. Add task queue (Celery/Redis Queue) for async workflow execution
-4. Implement provider-aware LLM routing with fallback chains
-5. Add read replicas for PostgreSQL queries
-
-## Known Technical Debt
-
-| Issue | Impact | Priority |
-|-------|--------|----------|
-| LLM only supports Gemini (hardcoded REST API) | All models selected in UI call Gemini | **Critical** |
-| No request timeout for long-running workflows | Workflow may hang indefinitely | **High** |
-| Alembic migrations exist but not run on startup | Schema drift between environments | **High** |
-| No connection pooling for Redis | Reconnects on every publish | **Medium** |
-| Conversation memory is in-process only | Lost on restart, not shared across instances | **Medium** |
-| Rate limiter is in-memory | Won't work behind load balancer | **Medium** |
-| No metrics/opentelemetry integration | No observability in production | **Medium** |
-| Test coverage is low for services layer | Regression risk | **Medium** |
 
 ## Security Architecture
 
@@ -205,7 +195,7 @@ Database ───► ORM with parameterized queries (no SQL injection)
 
 ```
                           ┌─────────────┐
-                          │   CDN/ LB   │
+                          │   CDN/LB    │
                           └──────┬──────┘
                                  │
               ┌──────────────────┼──────────────────┐
@@ -242,3 +232,28 @@ Database ───► ORM with parameterized queries (no SQL injection)
                     │   PostgreSQL Read Rep   │
                     └─────────────────────────┘
 ```
+
+## Scaling Considerations
+
+### Current Limits
+- **Single Python process** for workflow execution (blocking during long runs)
+- **In-memory rate limiter** doesn't work across multiple instances
+- **In-memory conversation history** lost on restart
+
+### Horizontal Scaling Path
+1. Move rate limiting to Redis (sliding window or token bucket)
+2. Replace in-memory conversation history with Redis/DB persistence
+3. Add task queue (Celery/Redis Queue) for async workflow execution
+4. Add provider-level fallback chains for high availability
+5. Add read replicas for PostgreSQL queries
+
+## Known Technical Debt
+
+| Issue | Impact | Priority |
+|-------|--------|----------|
+| No request timeout for long-running workflows | Workflow may hang indefinitely | **High** |
+| No connection pooling for Redis | Reconnects on every publish | **Medium** |
+| Conversation memory is in-process only | Lost on restart, not shared across instances | **Medium** |
+| Rate limiter is in-memory | Won't work behind load balancer | **Medium** |
+| No metrics/opentelemetry integration | No observability in production | **Medium** |
+| Test coverage is low for services layer | Regression risk | **Medium** |

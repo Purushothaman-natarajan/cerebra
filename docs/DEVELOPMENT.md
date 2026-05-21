@@ -6,37 +6,44 @@
 
 - Python 3.12+
 - Node.js 22+
-- Docker Desktop (for Postgres + Redis)
+- Docker Desktop (for Postgres + Redis, optional)
 - Git
+- uv package manager (recommended) or pip
 
 ### 1. Clone & Environment
 
 ```bash
-git clone https://github.com/your-org/cerebra.git
+git clone https://github.com/Purushothaman-natarajan/cerebra.git
 cd cerebra
 cp .env.example .env
 ```
 
-Edit `.env` and add your `GEMINI_API_KEY`.
+Edit `.env` and add your `GEMINI_API_KEY` or configure a provider via the UI later.
 
-### 2. Start Dependencies
+### 2. Start Dependencies (optional)
 
 ```bash
 docker compose up postgres redis -d
 ```
 
+For SQLite development, skip this step and set `DATABASE_URL=sqlite+aiosqlite:///./cerebra.db`.
+
 ### 3. Backend Setup
 
 ```bash
 cd backend
-python -m venv venv
-.\venv\Scripts\Activate    # Windows
-# source venv/bin/activate  # Mac/Linux
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uv venv
+uv sync
+# Or with pip: pip install -r requirements.txt
+
+# Use SQLite for local dev (no PostgreSQL needed):
+set DATABASE_URL=sqlite+aiosqlite:///./cerebra.db   # Windows
+export DATABASE_URL=sqlite+aiosqlite:///./cerebra.db # macOS/Linux
+
+uv run uvicorn app.main:app --reload --port 8000
 ```
 
-Verify: http://localhost:8000/health → `{"status":"ok"}`
+Verify: http://localhost:8000/health → `{"status":"healthy",...}`
 
 ### 4. Frontend Setup
 
@@ -47,6 +54,8 @@ npm run dev
 ```
 
 Opens at http://localhost:5173. API calls proxy to `localhost:8000`.
+
+---
 
 ## Project Layout
 
@@ -68,11 +77,17 @@ frontend/          # React / TypeScript / Vite
     pages/         # Route-level page components
     store/         # Zustand state stores
 templates/         # Pre-built workflow JSON files
+site/              # GitHub Pages landing site (independent)
+docs/              # Documentation
 ```
+
+---
 
 ## Database
 
 ### Schema Migrations (Alembic)
+
+Models auto-create on first startup. For production schema changes, use Alembic:
 
 ```bash
 cd backend
@@ -85,9 +100,13 @@ alembic upgrade head
 
 # Rollback one step
 alembic downgrade -1
+
+# View status
+alembic current
+alembic history
 ```
 
-Models auto-create on first startup (`Base.metadata.create_all`). For production, use `alembic upgrade head`.
+---
 
 ## Testing
 
@@ -95,6 +114,8 @@ Models auto-create on first startup (`Base.metadata.create_all`). For production
 
 ```bash
 cd backend
+
+# Run all tests
 python -m pytest tests/ -v
 
 # Run a specific test file
@@ -106,6 +127,8 @@ python -m pytest tests/ --cov=app
 ```
 
 Tests use SQLite in-memory (no Postgres needed). Redis failures are caught gracefully. API key–dependent tests auto-skip when `GEMINI_API_KEY` is unset.
+
+**Current test count:** 39 passed, 3 skipped (skipped need Gemini API key).
 
 ### Writing Tests
 
@@ -125,6 +148,16 @@ async def test_create_agent(client: AsyncClient):
 - Use `db_session` fixture for direct DB access
 - Mark integration tests with `@pytest.mark.skipif(not os.getenv("GEMINI_API_KEY"), ...)`
 
+### Frontend Tests
+
+```bash
+cd frontend
+npx vitest run                       # Run all tests
+npx vitest --coverage                # With coverage
+```
+
+---
+
 ## Adding a New Tool
 
 Tools live in `backend/app/runtime/tools/`. They use a decorator-based registry.
@@ -136,7 +169,6 @@ from app.runtime.tools.registry import register
 @register("my_tool")
 async def my_tool(param: str) -> str:
     """Description shown to the LLM. Input: what the tool expects. Output: what it returns."""
-    # Your implementation here
     return f"Processed: {param}"
 ```
 
@@ -148,14 +180,18 @@ import app.runtime.tools.my_tool  # noqa: F401
 
 The LLM will automatically see the tool when an agent has `"my_tool"` in its `tools` list.
 
-## Adding a New Agent Type
+---
 
-Agents are generic — they just need a system prompt, model name, and tool list. To add a specialized variant:
+## Adding a New LLM Provider
 
-1. Create the agent via the API or UI (set `model`, `system_prompt`, `tools`)
-2. Reference it in a workflow node: `{"id": "my_agent", "type": "agent", "config": {...}}`
+See [PROVIDERS.md](PROVIDERS.md) for user-facing setup. For developer implementation:
 
-No code changes needed — everything is data-driven.
+1. Add adapter in `backend/app/runtime/llm_providers.py` following the existing pattern
+2. Register the provider type in the provider router for UI display
+3. Add model discovery logic in the test-connection flow
+4. Add pricing entry if applicable
+
+---
 
 ## Adding a New Messaging Channel
 
@@ -174,6 +210,8 @@ class MyChannel(AbstractChannel):
 ```
 
 Then add a webhook route in `backend/app/api/channels.py`.
+
+---
 
 ## Workflow Templates
 
@@ -224,44 +262,31 @@ curl -X POST http://localhost:8000/workflows \
 |------|-------------|
 | `agent` | Runs an LLM with optional tools and guardrails |
 | `router` | Evaluates conditions and routes to the matching edge |
+| `human` | Pauses workflow for human approval |
+| `output` | Sends result to a destination |
+| `note` | Documentation annotation (no execution) |
 
 ### Router Conditions
 
 Router nodes evaluate keyword-based conditions against the last assistant message. The edge with a matching condition name (where the message contains the keywords defined in the router's config) is followed.
 
-### Edge Properties
-
-| Property | Description |
-|----------|-------------|
-| `source` | Source node ID |
-| `target` | Target node ID |
-| `condition` | Condition name (matches router config) or null for unconditional |
-| `fallback` | Target when condition doesn't match (defaults to `target`) |
+---
 
 ## Configuration Reference
 
 | Environment Variable | Default | Description |
 |---------------------|---------|-------------|
-| `GEMINI_API_KEY` | — | Google Gemini API key (required) |
-| `DATABASE_URL` | `postgresql+asyncpg://postgres:postgres@localhost:5432/cerebra` | Async Postgres connection |
+| `GEMINI_API_KEY` | — | Google Gemini API key (fallback) |
+| `CEREBRA_API_KEY` | — | API auth bearer token (set `no_key` to disable) |
+| `ENCRYPTION_KEY` | — | Encrypts provider API keys (min 16 chars) |
+| `DATABASE_URL` | `postgresql+asyncpg://postgres:postgres@localhost:5432/cerebra` | Async database connection |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection |
 | `TELEGRAM_BOT_TOKEN` | — | Telegram bot token |
 | `TELEGRAM_WEBHOOK_URL` | — | Telegram webhook URL |
+| `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| `SERVICE_NAME` | `cerebra-backend` | Service name in log output |
 
-## Running Without Docker
-
-```bash
-# Terminal 1: Backend
-cd backend
-uvicorn app.main:app --reload --port 8000
-
-# Terminal 2: Frontend
-cd frontend
-npm run dev
-
-# Terminal 3: Postgres + Redis (if not using Docker)
-# Ensure local Postgres and Redis instances are running
-```
+---
 
 ## Common Tasks
 
@@ -271,6 +296,8 @@ npm run dev
 docker compose down -v    # Deletes volumes including Postgres data
 docker compose up -d      # Fresh start
 ```
+
+For SQLite: delete `backend/cerebra.db` and restart.
 
 ### View API Docs
 
@@ -297,11 +324,13 @@ curl -X POST http://localhost:8000/agents \
   }'
 ```
 
-## Troubleshooting
+---
+
+## Troubleshooting Local Development
 
 ### "No API key was provided"
 
-Set `GEMINI_API_KEY` in `.env` or as an environment variable.
+Set `GEMINI_API_KEY` in `.env` or add a provider via the UI.
 
 ### Redis Connection Refused
 
@@ -313,7 +342,13 @@ Change ports in `docker-compose.yml` or use `--port` for local dev servers.
 
 ### Database Connection Error
 
-Ensure Postgres is running and `DATABASE_URL` is correct. On first boot, tables are created automatically.
+Ensure Postgres is running and `DATABASE_URL` is correct. For SQLite dev: `DATABASE_URL=sqlite+aiosqlite:///./cerebra.db`.
+
+### Frontend Proxy Errors (5173 → 8000)
+
+Make sure the backend is running on port 8000. The Vite proxy in `vite.config.ts` forwards `/api` and `/ws` requests to the backend.
+
+---
 
 ## Git Workflow
 

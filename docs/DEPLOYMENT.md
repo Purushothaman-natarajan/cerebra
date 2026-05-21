@@ -12,6 +12,25 @@
 
 ---
 
+## Quick Deploy (Single Server)
+
+```bash
+# 1. Clone & configure
+git clone https://github.com/Purushothaman-natarajan/cerebra.git
+cd cerebra
+cp .env.example .env
+nano .env   # add GEMINI_API_KEY, CEREBRA_API_KEY, ENCRYPTION_KEY
+
+# 2. Start all services
+docker compose up --build -d
+
+# 3. Verify
+curl http://localhost:8000/health
+curl http://localhost:5173/
+```
+
+---
+
 ## Production Architecture
 
 ```
@@ -38,23 +57,6 @@
 
 ---
 
-## Quick Deploy (Single Server)
-
-```bash
-# 1. Clone & configure
-git clone https://github.com/your-org/cerebra.git.git
-cd cerebra
-cp .env.example .env
-nano .env   # add GEMINI_API_KEY, CEREBRA_API_KEY, ENCRYPTION_KEY
-
-# 2. Start all services
-docker compose up --build -d
-
-# 3. Verify
-curl http://localhost:8000/health
-curl http://localhost:5173/
-```
-
 ## Environment Variables (Production)
 
 | Variable | Required | Description |
@@ -68,6 +70,8 @@ curl http://localhost:5173/
 | `REDIS_PASSWORD` | Recommended | Redis auth password |
 | `POSTGRES_PASSWORD` | Yes | Postgres password (change default!) |
 | `DATABASE_URL` | No | Defaults to docker-compose internal URL |
+
+---
 
 ## Production docker-compose.yml
 
@@ -140,6 +144,8 @@ Run with:
 docker compose -f docker-compose.prod.yml up -d
 ```
 
+---
+
 ## HTTPS Setup (Let's Encrypt)
 
 For production, the frontend nginx should terminate TLS.
@@ -184,6 +190,74 @@ cerebra.example.com {
 }
 ```
 
+---
+
+## Monitoring & Logging
+
+### Health Check Endpoint
+
+```
+GET /health
+```
+
+The health endpoint checks database connectivity and returns service version info.
+Configure your monitoring tool (UptimeRobot, Better Uptime, etc.) to ping this every 60s.
+
+### Viewing Logs
+
+```bash
+# Docker logs
+docker compose logs backend -f --tail=100
+docker compose logs frontend -f --tail=100
+
+# Backend produces structured JSON logs:
+# {"timestamp":"...","level":"INFO","service":"cerebra-backend","request_id":"...","message":"..."}
+```
+
+### External Monitoring Setup
+
+1. **Uptime monitoring**: Configure your provider to check `https://your-domain.com/health`
+2. **Error tracking**: Integrate Sentry or similar by adding middleware
+3. **Application metrics**: Add Prometheus endpoint (planned for future release)
+
+---
+
+## Backup & Restore
+
+### Database Backup
+
+```bash
+# Manual backup
+docker compose exec postgres pg_dump -U cerebra cerebra > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Automated backup (add to crontab)
+0 3 * * * cd /opt/cerebra && docker compose exec -T postgres pg_dump -U cerebra cerebra > backups/daily_$(date +\%Y\%m\%d).sql && find backups/ -name "*.sql" -mtime +30 -delete
+```
+
+### Restore
+
+```bash
+# Restore from backup
+cat backup_20260501_120000.sql | docker compose exec -T postgres psql -U cerebra cerebra
+```
+
+### Volume Snapshots
+
+For production, use your cloud provider's volume snapshot feature (RDS snapshots, EBS snapshots, etc.).
+
+---
+
+## Running Database Migrations
+
+```bash
+# Production: run migrations before starting the new version
+docker compose run --rm backend alembic upgrade head
+```
+
+Migrations are NOT run automatically on startup. Run them manually during deployment.
+
+---
+
 ## Security Checklist
 
 Before exposing to the internet:
@@ -197,6 +271,10 @@ Before exposing to the internet:
 - [ ] Rate limiting active (built-in, 10/min on /runs)
 - [ ] Firewall: only ports 80/443 open
 - [ ] Regular volume backups for `pgdata`
+- [ ] Database migrations run manually
+- [ ] Monitoring health check configured
+
+---
 
 ## Scaling Considerations
 
