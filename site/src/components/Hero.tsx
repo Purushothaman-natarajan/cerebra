@@ -19,9 +19,10 @@ export default function Hero() {
             Platform
           </h1>
           <p className="mt-6 text-lg text-slate-400 sm:text-xl max-w-2xl mx-auto">
-            Build multi-agent workflows with a visual canvas. Connect any LLM —
-            OpenAI, Gemini, Anthropic. Add tools, set guardrails, deploy via
-            Telegram or API.
+            Cerebra is an AI research and engineering platform for building
+            intelligent multi-agent workflows with Generative AI, RAG-powered
+            retrieval, and vector search. Connect any LLM — OpenAI, Gemini,
+            Anthropic. Add tools, set guardrails, deploy via Telegram or API.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
